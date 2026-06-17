@@ -19,6 +19,8 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 export async function runPairing(display: Display): Promise<{ deviceToken: string; deviceId: string }> {
   for (;;) {
     const session = await startSession();
+    // Always log to stdout (journalctl-friendly) in addition to the on-screen code.
+    console.log(`[pairing] enter code in dashboard: ${session.code} (server ${config.server})`);
     await display.showPairingCode(session.code, config.server);
     const expiresAt = new Date(session.expiresAt).getTime();
 
