@@ -1,0 +1,16 @@
+# Railway deployment config for the PiSignage cloud control plane.
+# One service: the Fastify server, which also serves the built React dashboard
+# from the same origin (apps/dashboard/dist). Nixpacks runs `npm ci` automatically
+# in the install phase; we override the build to compile only what the server needs
+# (shared protocol -> dashboard -> server) and skip the Pi agent.
+
+[build]
+builder = "nixpacks"
+buildCommand = "npm run build:shared && npm run build -w @pisignage/dashboard && npm run build -w @pisignage/server"
+
+[deploy]
+startCommand = "npm run start -w @pisignage/server"
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 10
+healthcheckPath = "/health"
+healthcheckTimeout = 30
