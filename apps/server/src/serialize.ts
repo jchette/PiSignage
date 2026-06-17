@@ -21,3 +21,25 @@ export function serializeDevice(row: DeviceRow) {
 }
 
 export type DeviceDto = ReturnType<typeof serializeDevice>;
+
+type ScheduleRow = InferSelectModel<typeof schema.schedules>;
+
+export function serializeSchedule(row: ScheduleRow) {
+  return {
+    id: row.id,
+    name: row.name,
+    enabled: row.enabled,
+    targetType: row.targetType,
+    targetId: row.targetId,
+    action: row.action,
+    payload: row.payload,
+    kind: row.kind,
+    time: row.time,
+    daysOfWeek: row.daysOfWeek,
+    date: row.date,
+    lastFiredKey: row.lastFiredKey,
+    createdAt: row.createdAt.toISOString(),
+  };
+}
+
+export type ScheduleDto = ReturnType<typeof serializeSchedule>;

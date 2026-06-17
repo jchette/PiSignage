@@ -8,7 +8,9 @@ import Fastify from 'fastify';
 import { config } from './config.js';
 import { authRoutes } from './routes/auth.js';
 import { deviceRoutes } from './routes/devices.js';
+import { groupRoutes } from './routes/groups.js';
 import { pairingRoutes } from './routes/pairing.js';
+import { scheduleRoutes } from './routes/schedules.js';
 import { registerDeviceGateway } from './ws/gateway.js';
 
 // Built dashboard lives at apps/dashboard/dist; this file runs from apps/server/dist.
@@ -33,6 +35,8 @@ export async function buildApp() {
   await app.register(authRoutes);
   await app.register(pairingRoutes);
   await app.register(deviceRoutes);
+  await app.register(groupRoutes);
+  await app.register(scheduleRoutes);
   await app.register(registerDeviceGateway);
 
   // Serve the built React dashboard from the same origin (no CORS, single deploy).

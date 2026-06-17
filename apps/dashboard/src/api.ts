@@ -14,6 +14,36 @@ export interface Device {
   createdAt: string;
 }
 
+export interface Group {
+  id: string;
+  name: string;
+  deviceIds: string[];
+  createdAt?: string;
+}
+
+export type SchedulePayload =
+  | { type: 'url'; url: string }
+  | { type: 'blank' }
+  | { on: boolean };
+
+export interface Schedule {
+  id: string;
+  name: string;
+  enabled: boolean;
+  targetType: 'device' | 'group';
+  targetId: string;
+  action: 'set_content' | 'tv_power';
+  payload: SchedulePayload;
+  kind: 'weekly' | 'once';
+  time: string;
+  daysOfWeek: string | null;
+  date: string | null;
+  lastFiredKey: string | null;
+  createdAt: string;
+}
+
+export type NewSchedule = Omit<Schedule, 'id' | 'lastFiredKey' | 'createdAt'>;
+
 const TOKEN_KEY = 'pisignage.token';
 
 export function getToken(): string | null {
@@ -73,6 +103,46 @@ export const api = {
     request<{ ok: boolean; delivered: boolean }>(`/api/devices/${id}/refresh`, { method: 'POST' }),
   deleteDevice: (id: string) =>
     request<{ ok: boolean }>(`/api/devices/${id}`, { method: 'DELETE' }),
+
+  // --- Groups ---
+  listGroups: () => request<{ groups: Group[] }>('/api/groups'),
+  createGroup: (name: string) =>
+    request<{ group: Group }>('/api/groups', { method: 'POST', body: JSON.stringify({ name }) }),
+  renameGroup: (id: string, name: string) =>
+    request<{ ok: boolean }>(`/api/groups/${id}`, { method: 'PATCH', body: JSON.stringify({ name }) }),
+  deleteGroup: (id: string) =>
+    request<{ ok: boolean }>(`/api/groups/${id}`, { method: 'DELETE' }),
+  setGroupDevices: (id: string, deviceIds: string[]) =>
+    request<{ ok: boolean }>(`/api/groups/${id}/devices`, {
+      method: 'PUT',
+      body: JSON.stringify({ deviceIds }),
+    }),
+  setGroupContent: (id: string, payload: { url?: string; blank?: boolean }) =>
+    request<{ ok: boolean; devices: number; delivered: number }>(`/api/groups/${id}/content`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  setGroupTvPower: (id: string, on: boolean) =>
+    request<{ ok: boolean; devices: number; delivered: number }>(`/api/groups/${id}/tv`, {
+      method: 'POST',
+      body: JSON.stringify({ on }),
+    }),
+  refreshGroup: (id: string) =>
+    request<{ ok: boolean; devices: number; delivered: number }>(`/api/groups/${id}/refresh`, {
+      method: 'POST',
+    }),
+
+  // --- Schedules ---
+  listSchedules: () => request<{ schedules: Schedule[] }>('/api/schedules'),
+  createSchedule: (s: NewSchedule) =>
+    request<{ schedule: Schedule }>('/api/schedules', { method: 'POST', body: JSON.stringify(s) }),
+  setScheduleEnabled: (id: string, enabled: boolean) =>
+    request<{ ok: boolean }>(`/api/schedules/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ enabled }),
+    }),
+  deleteSchedule: (id: string) =>
+    request<{ ok: boolean }>(`/api/schedules/${id}`, { method: 'DELETE' }),
 };
 
 /** Open the SSE stream for live device updates. Token goes in the query string. */

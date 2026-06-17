@@ -1,7 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import { sql } from 'drizzle-orm';
-import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { index, integer, primaryKey, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 import type { Content, TvState } from '@pisignage/shared';
+
+/** What a schedule does when it fires: set content, or switch TV power. */
+export type SchedulePayload = Content | { on: boolean };
 
 /**
  * Data layer: Turso (libSQL / SQLite) via Drizzle.
@@ -18,6 +21,8 @@ import type { Content, TvState } from '@pisignage/shared';
 export const orgs = sqliteTable('orgs', {
   id: text('id').primaryKey().$defaultFn(randomUUID),
   name: text('name').notNull(),
+  // IANA timezone used to evaluate schedules (DST-aware). One per tenant.
+  timezone: text('timezone').notNull().default('America/New_York'),
   createdAt: integer('created_at', { mode: 'timestamp' })
     .notNull()
     .$defaultFn(() => new Date()),
@@ -88,5 +93,74 @@ export const pairingSessions = sqliteTable(
   }),
 );
 
-export const schema = { orgs, users, devices, pairingSessions };
+/** A named collection of devices for bulk control + scheduling. */
+export const groups = sqliteTable(
+  'groups',
+  {
+    id: text('id').primaryKey().$defaultFn(randomUUID),
+    orgId: text('org_id')
+      .notNull()
+      .references(() => orgs.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    createdAt: integer('created_at', { mode: 'timestamp' })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (t) => ({
+    orgIdx: index('groups_org_idx').on(t.orgId),
+  }),
+);
+
+/** Many-to-many membership: a device can belong to several groups. */
+export const deviceGroups = sqliteTable(
+  'device_groups',
+  {
+    deviceId: text('device_id')
+      .notNull()
+      .references(() => devices.id, { onDelete: 'cascade' }),
+    groupId: text('group_id')
+      .notNull()
+      .references(() => groups.id, { onDelete: 'cascade' }),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.deviceId, t.groupId] }),
+    groupIdx: index('device_groups_group_idx').on(t.groupId),
+  }),
+);
+
+/**
+ * A scheduled action against a device or group. Times are stored as 'HH:MM' in
+ * the org's timezone; a server-side ticker fires them edge-triggered.
+ *  - kind 'weekly': fires at `time` on each weekday listed in `daysOfWeek` (CSV, 0=Sun).
+ *  - kind 'once':   fires at `time` on the single calendar `date` ('YYYY-MM-DD').
+ * `lastFiredKey` ('YYYY-MM-DDTHH:MM') dedupes firing within a minute / across restarts.
+ */
+export const schedules = sqliteTable(
+  'schedules',
+  {
+    id: text('id').primaryKey().$defaultFn(randomUUID),
+    orgId: text('org_id')
+      .notNull()
+      .references(() => orgs.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    enabled: integer('enabled', { mode: 'boolean' }).notNull().default(true),
+    targetType: text('target_type').$type<'device' | 'group'>().notNull(),
+    targetId: text('target_id').notNull(),
+    action: text('action').$type<'set_content' | 'tv_power'>().notNull(),
+    payload: text('payload', { mode: 'json' }).$type<SchedulePayload>().notNull(),
+    kind: text('kind').$type<'weekly' | 'once'>().notNull(),
+    time: text('time').notNull(),
+    daysOfWeek: text('days_of_week'),
+    date: text('date'),
+    lastFiredKey: text('last_fired_key'),
+    createdAt: integer('created_at', { mode: 'timestamp' })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (t) => ({
+    orgIdx: index('schedules_org_idx').on(t.orgId),
+  }),
+);
+
+export const schema = { orgs, users, devices, pairingSessions, groups, deviceGroups, schedules };
 export { sql };

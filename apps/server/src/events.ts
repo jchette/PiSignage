@@ -10,7 +10,9 @@ import type { FastifyReply } from 'fastify';
 
 export type DashboardEvent =
   | { type: 'device.updated'; deviceId: string }
-  | { type: 'device.status'; deviceId: string; status: 'online' | 'offline' };
+  | { type: 'device.status'; deviceId: string; status: 'online' | 'offline' }
+  | { type: 'groups.updated' }
+  | { type: 'schedules.updated' };
 
 interface Subscriber {
   orgId: string;

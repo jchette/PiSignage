@@ -1,6 +1,5 @@
 import { and, eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
-import { nanoid } from 'nanoid';
 import { z } from 'zod';
 import type { Content } from '@pisignage/shared';
 import { generateDeviceToken } from '../auth.js';
@@ -9,7 +8,8 @@ import { addSubscriber, publish } from '../events.js';
 import { requireAuth } from '../middleware.js';
 import { serializeDevice } from '../serialize.js';
 import { verifyAuthToken } from '../auth.js';
-import { isDeviceOnline, sendToDevice } from '../ws/registry.js';
+import { applyContent, applyRefresh, applyTvPower } from '../services/control.js';
+import { isDeviceOnline } from '../ws/registry.js';
 
 const ClaimBody = z.object({
   code: z.string().min(4),
@@ -85,17 +85,14 @@ export async function deviceRoutes(fastify: FastifyInstance): Promise<void> {
     const device = await getOwnedDevice(id, req.auth!.orgId);
     if (!device) return reply.code(404).send({ error: 'not_found' });
 
-    const content: Content = parsed.data.blank
-      ? { type: 'blank' }
-      : { type: 'url', url: parsed.data.url! };
     if (!parsed.data.blank && !parsed.data.url) {
       return reply.code(400).send({ error: 'url_required' });
     }
+    const content: Content = parsed.data.blank
+      ? { type: 'blank' }
+      : { type: 'url', url: parsed.data.url! };
 
-    await db.update(schema.devices).set({ content }).where(eq(schema.devices.id, id));
-
-    const delivered = sendToDevice(id, { t: 'set_content', commandId: nanoid(), content });
-    publish(req.auth!.orgId, { type: 'device.updated', deviceId: id });
+    const delivered = await applyContent(id, req.auth!.orgId, content);
     return { ok: true, delivered };
   });
 
@@ -109,7 +106,7 @@ export async function deviceRoutes(fastify: FastifyInstance): Promise<void> {
     }
     const device = await getOwnedDevice(id, req.auth!.orgId);
     if (!device) return reply.code(404).send({ error: 'not_found' });
-    const delivered = sendToDevice(id, { t: 'tv_power', commandId: nanoid(), on: parsed.data.on });
+    const delivered = applyTvPower(id, parsed.data.on);
     return { ok: true, delivered };
   });
 
@@ -118,7 +115,7 @@ export async function deviceRoutes(fastify: FastifyInstance): Promise<void> {
     const { id } = req.params as { id: string };
     const device = await getOwnedDevice(id, req.auth!.orgId);
     if (!device) return reply.code(404).send({ error: 'not_found' });
-    const delivered = sendToDevice(id, { t: 'refresh', commandId: nanoid() });
+    const delivered = applyRefresh(id);
     return { ok: true, delivered };
   });
 
