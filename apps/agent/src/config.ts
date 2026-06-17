@@ -11,7 +11,8 @@ export const config = {
   display: (process.env.PISIGNAGE_DISPLAY ?? 'auto') as 'auto' | 'chromium' | 'console',
   kioskCmd:
     process.env.PISIGNAGE_KIOSK_CMD ??
-    'chromium-browser --kiosk --noerrdialogs --disable-infobars --ozone-platform=wayland {url}',
+    'chromium --kiosk --ozone-platform=wayland --no-first-run --noerrdialogs ' +
+      '--disable-infobars --disable-session-crashed-bubble --password-store=basic {url}',
   agentVersion: '0.1.0',
   heartbeatMs: 15000,
 };

@@ -40,8 +40,9 @@ export class ChromiumDisplay implements Display {
   private launchUrl(url: string): void {
     this.kill();
     const cmd = config.kioskCmd.replace('{url}', url);
-    // Launch via shell so the configurable command template works as written.
-    this.child = spawn(cmd, { shell: true, stdio: 'inherit' });
+    // Launch via shell (so the command template works as written) and detached,
+    // which puts chromium in its own process group we can kill wholesale.
+    this.child = spawn(cmd, { shell: true, detached: true, stdio: 'inherit' });
     this.child.on('exit', (code) => {
       if (code && code !== 0) {
         console.error(`[kiosk] browser exited with code ${code}`);
@@ -50,11 +51,16 @@ export class ChromiumDisplay implements Display {
   }
 
   private kill(): void {
-    if (this.child) {
+    if (this.child?.pid) {
       try {
-        this.child.kill('SIGTERM');
+        // Negative pid signals the whole process group (shell + chromium tree).
+        process.kill(-this.child.pid, 'SIGTERM');
       } catch {
-        /* ignore */
+        try {
+          this.child.kill('SIGTERM');
+        } catch {
+          /* ignore */
+        }
       }
       this.child = null;
     }
