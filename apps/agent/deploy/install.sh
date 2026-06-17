@@ -121,7 +121,7 @@ fi
 #    the kiosk — exists at boot; linger so the user service starts unattended.
 # ---------------------------------------------------------------------------
 if command -v raspi-config >/dev/null 2>&1 \
-   && [ "$(sudo raspi-config nonint get_autologin 2>/dev/null || echo 1)" != "0" ]; then
+   && [ "$(raspi-config nonint get_autologin 2>/dev/null || echo 1)" != "0" ]; then
   say "Enabling Desktop Autologin (sudo)"
   sudo raspi-config nonint do_boot_behaviour B4 || true
 fi
@@ -140,7 +140,9 @@ sed "s|/home/pi|$HOME|g" \
   > "$HOME/.config/systemd/user/pisignage-agent.service"
 export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-$RUNTIME_DIR}"
 systemctl --user daemon-reload
-systemctl --user enable --now pisignage-agent
+systemctl --user enable pisignage-agent
+# restart (not just start) so re-running the installer to update picks up the new build.
+systemctl --user restart pisignage-agent
 
 say "Done."
 cat <<EOF
