@@ -22,6 +22,10 @@ const SetContentBody = z.object({
   blank: z.boolean().optional(),
 });
 
+const TvPowerBody = z.object({
+  on: z.boolean(),
+});
+
 export async function deviceRoutes(fastify: FastifyInstance): Promise<void> {
   // List all devices in the caller's org.
   fastify.get('/api/devices', { preHandler: requireAuth }, async (req) => {
@@ -92,6 +96,20 @@ export async function deviceRoutes(fastify: FastifyInstance): Promise<void> {
 
     const delivered = sendToDevice(id, { t: 'set_content', commandId: nanoid(), content });
     publish(req.auth!.orgId, { type: 'device.updated', deviceId: id });
+    return { ok: true, delivered };
+  });
+
+  // HDMI-CEC TV power control. The agent runs CEC then reports tvState back via
+  // heartbeat, which the dashboard picks up over SSE.
+  fastify.post('/api/devices/:id/tv', { preHandler: requireAuth }, async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const parsed = TvPowerBody.safeParse(req.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: 'invalid_body' });
+    }
+    const device = await getOwnedDevice(id, req.auth!.orgId);
+    if (!device) return reply.code(404).send({ error: 'not_found' });
+    const delivered = sendToDevice(id, { t: 'tv_power', commandId: nanoid(), on: parsed.data.on });
     return { ok: true, delivered };
   });
 

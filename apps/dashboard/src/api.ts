@@ -64,6 +64,11 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
+  setTvPower: (id: string, on: boolean) =>
+    request<{ ok: boolean; delivered: boolean }>(`/api/devices/${id}/tv`, {
+      method: 'POST',
+      body: JSON.stringify({ on }),
+    }),
   refresh: (id: string) =>
     request<{ ok: boolean; delivered: boolean }>(`/api/devices/${id}/refresh`, { method: 'POST' }),
   deleteDevice: (id: string) =>

@@ -54,6 +54,22 @@ export function DeviceCard({ device, onChanged }: { device: Device; onChanged: (
         </div>
       </label>
 
+      <div className="field">
+        TV power <span className="muted small">({device.tvState})</span>
+        <div className="card-actions">
+          <button onClick={() => act(() => api.setTvPower(device.id, true))} disabled={busy}>
+            On
+          </button>
+          <button
+            className="ghost"
+            onClick={() => act(() => api.setTvPower(device.id, false))}
+            disabled={busy}
+          >
+            Off
+          </button>
+        </div>
+      </div>
+
       <div className="card-actions">
         <button className="ghost" onClick={() => act(() => api.refresh(device.id))} disabled={busy}>
           Refresh
