@@ -1,0 +1,35 @@
+# PiSignage agent as a systemd USER service — the approach validated on a real
+# Pi 5 (Raspberry Pi OS Trixie, labwc/Wayland, Desktop Autologin).
+#
+# Why a *user* service instead of the system unit (pisignage-agent.service):
+#  - No sudo needed to install or manage it (the `pi` user's sudo wants a
+#    password, which is awkward for headless/scripted setup).
+#  - It runs inside the pi user's graphical session, so the kiosk inherits the
+#    Wayland display (wayland-0) for free.
+#  - With Desktop Autologin, the user manager starts at boot and brings this up.
+#
+# Install (as the pi user, no sudo):
+#   mkdir -p ~/.config/systemd/user
+#   cp pisignage-agent.user.service ~/.config/systemd/user/pisignage-agent.service
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now pisignage-agent
+#
+# Runtime config (server URL, wayland env) is read from
+# /home/pi/pisignage/apps/agent/.env via dotenv. Node is installed user-local at
+# ~/.local/node (no sudo); see deploy/install.sh.
+
+[Unit]
+Description=PiSignage Agent
+After=graphical-session.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/pi/pisignage/apps/agent
+# Wait until the labwc Wayland socket exists so the kiosk has a display on boot.
+ExecStartPre=/bin/sh -c 'until [ -S ${XDG_RUNTIME_DIR}/wayland-0 ]; do sleep 1; done'
+ExecStart=/home/pi/.local/node/bin/node /home/pi/pisignage/apps/agent/dist/index.js
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=default.target
