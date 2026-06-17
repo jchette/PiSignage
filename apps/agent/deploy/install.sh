@@ -116,6 +116,36 @@ if [ -f "$autostart" ] && grep -q 'swayidle' "$autostart"; then
   sed -i '/swayidle/d' "$autostart"
 fi
 
+# Hide the mouse cursor. labwc parks a pointer at screen-centre on session start
+# even with no mouse attached, so it sits over the kiosk. Point the cursor theme
+# at a fully-transparent one (validated on hardware). Takes effect next session.
+if command -v python3 >/dev/null 2>&1; then
+  say "Installing transparent cursor (hides the pointer for signage)"
+  cursors="$HOME/.local/share/icons/blank/cursors"
+  mkdir -p "$cursors"
+  cat > "$HOME/.local/share/icons/blank/index.theme" <<'EOF'
+[Icon Theme]
+Name=blank
+Comment=Fully transparent cursor for signage kiosks
+EOF
+  python3 - "$cursors/left_ptr" <<'PY'
+import struct, sys
+p = sys.argv[1]; w = h = size = 24; xhot = yhot = delay = 0
+img = struct.pack("<IIIIIIIII", 36, 0xfffd0002, size, 1, w, h, xhot, yhot, delay) + b"\x00" * (w * h * 4)
+open(p, "wb").write(b"Xcur" + struct.pack("<III", 16, 0x10000, 1) + struct.pack("<III", 0xfffd0002, size, 28) + img)
+PY
+  ( cd "$cursors" && for n in default arrow top_left_arrow pointer hand1 hand2 text xterm ptr left_ptr_watch watch; do
+      [ -e "$n" ] || ln -s left_ptr "$n"
+    done )
+  env_file="$HOME/.config/labwc/environment"
+  mkdir -p "$(dirname "$env_file")"
+  if grep -q '^XCURSOR_THEME=' "$env_file" 2>/dev/null; then
+    sed -i 's/^XCURSOR_THEME=.*/XCURSOR_THEME=blank/' "$env_file"
+  else
+    echo 'XCURSOR_THEME=blank' >> "$env_file"
+  fi
+fi
+
 # ---------------------------------------------------------------------------
 # 6. Boot behaviour (sudo): Desktop Autologin so the Wayland session — and thus
 #    the kiosk — exists at boot; linger so the user service starts unattended.
@@ -152,6 +182,9 @@ PiSignage agent is installed and running.
   - Claim it in the dashboard at: $SERVER
   - Logs:  systemctl --user status pisignage-agent
            journalctl --user -u pisignage-agent -f   (if user journal is persisted)
+
+Reboot once to apply autologin + the transparent cursor (they take effect on the
+next graphical session):  sudo reboot
 
 If the TV is on a different HDMI port later, CEC is auto-detected — no change needed.
 EOF
