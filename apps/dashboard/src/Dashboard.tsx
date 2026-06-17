@@ -9,6 +9,7 @@ import {
 } from './api.ts';
 import { DeviceCard } from './DeviceCard.tsx';
 import { AddDeviceModal } from './AddDeviceModal.tsx';
+import { ChangePasswordModal } from './ChangePasswordModal.tsx';
 import { GroupsPanel } from './GroupsPanel.tsx';
 import { SchedulesPanel } from './SchedulesPanel.tsx';
 
@@ -21,6 +22,7 @@ export function Dashboard({ onLogout }: { onLogout: () => void }) {
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -78,6 +80,9 @@ export function Dashboard({ onLogout }: { onLogout: () => void }) {
           <span className="muted">
             {online}/{devices.length} online
           </span>
+          <button className="ghost" onClick={() => setShowPassword(true)}>
+            Password
+          </button>
           <button className="ghost" onClick={logout}>
             Sign out
           </button>
@@ -130,6 +135,8 @@ export function Dashboard({ onLogout }: { onLogout: () => void }) {
           }}
         />
       )}
+
+      {showPassword && <ChangePasswordModal onClose={() => setShowPassword(false)} />}
     </div>
   );
 }

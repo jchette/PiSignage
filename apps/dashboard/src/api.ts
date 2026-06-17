@@ -83,6 +83,11 @@ export const api = {
       '/api/auth/login',
       { method: 'POST', body: JSON.stringify({ email, password }) },
     ),
+  changePassword: (currentPassword: string, newPassword: string) =>
+    request<{ ok: boolean }>('/api/auth/password', {
+      method: 'POST',
+      body: JSON.stringify({ currentPassword, newPassword }),
+    }),
   listDevices: () => request<{ devices: Device[] }>('/api/devices'),
   claimDevice: (code: string, name: string, location?: string) =>
     request<{ device: Device }>('/api/devices/claim', {
