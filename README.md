@@ -1,8 +1,8 @@
 # PiSignage
 
 Cloud-controlled Raspberry Pi digital signage. Each Pi drives a TV (currently a
-URL per screen), controlled from a web dashboard, with grouping, scheduling, and
-HDMI-CEC TV power on the roadmap.
+URL per screen), controlled from a web dashboard — with device grouping,
+scheduling, HDMI-CEC TV power, and per-device health monitoring.
 
 ## Architecture
 
@@ -31,7 +31,8 @@ HDMI-CEC TV power on the roadmap.
 - **Turso (libSQL/SQLite)** via **Drizzle** — local dev is a plain file, prod is
   Turso cloud (same `@libsql/client` driver, different `DATABASE_URL`).
 - **Fastify** + `@fastify/websocket`; SSE for dashboard live updates.
-- Hosting target: managed PaaS (Render/Railway).
+- Hosting: **Railway** runs the server, which also serves the built React
+  dashboard from the same origin (one deploy, no CORS).
 
 ## Local development
 
@@ -71,29 +72,60 @@ npm run dev:agent
 npm run build           # build all workspaces
 ```
 
-## Deploying the agent to a Pi (Phase 1 — tuned live on hardware)
+## Deploying the agent to a Pi
+
+Use **Raspberry Pi OS (64-bit, _with desktop_)** on a Pi plugged into the TV (any
+HDMI port — CEC is auto-detected). There are two ways to provision; both end with
+a pairing code on the TV that you claim in the dashboard. Full walkthrough:
+[PROVISIONING.md](PROVISIONING.md).
+
+### Quick install (on a running Pi)
+
+Boot to the desktop, get on the network, open a **Terminal as the `pi` user**
+(**not** `sudo`), and run:
 
 ```bash
-# On the Pi (Raspberry Pi OS Bookworm):
-curl -fsSL <server>/install.sh | sudo PISIGNAGE_SERVER=https://your-server bash
+curl -fsSL https://raw.githubusercontent.com/jchette/PiSignage/main/apps/agent/deploy/install.sh | bash
 ```
 
-Installs Node + Chromium + `cec-utils` + `cage`, deploys the agent to
-`/opt/pisignage-agent`, writes config to `/etc/pisignage`, and runs it as a
-systemd service. A pairing code appears on the TV. See
-`apps/agent/deploy/` for the unit file and installer.
+You'll be prompted for the sudo password once (apt packages + autologin + linger);
+everything else stays user-local. When it finishes, **reboot once** (`sudo reboot`)
+so autologin and the hidden cursor take effect. **Re-running the same command
+updates the agent** to the latest build.
 
-> The exact kiosk launch command (`PISIGNAGE_KIOSK_CMD`) and the CEC invocation
-> are finalized against a real Pi 5 — both are configurable via env.
+The installer keeps a clean, user-local footprint (no `/opt`, no system service):
+
+- installs **Node 22** at `~/.local/node` and clones the repo to `~/pisignage`
+- builds and runs the agent as a **systemd _user_ service** that comes up at boot
+  (Desktop Autologin + linger)
+- installs `git`, Chromium, and `v4l-utils` (CEC via `cec-ctl`) only if missing
+- disables screen blanking, hides the cursor for kiosk use, and persists logs
+
+Logs: `systemctl --user status pisignage-agent` /
+`journalctl --user -u pisignage-agent -f`.
+
+### Flash-and-go (auto-install on first boot)
+
+No SSH or typing on the Pi: Raspberry Pi Imager sets up the OS + network, and a
+first-boot hook runs the installer for you. Imager username **must** be `pi`. See
+[PROVISIONING.md](PROVISIONING.md) → _Method 2_.
+
+> The kiosk launch command (`PISIGNAGE_KIOSK_CMD`), the CEC device, and the
+> server URL (`PISIGNAGE_SERVER`) are all auto-detected/defaulted and overridable
+> via env vars.
 
 ## Roadmap
 
 - **Phase 0 ✅** Monorepo scaffold, shared protocol, local dev loop.
 - **Phase 1 ✅** Pair a Pi, push a URL, live online status — end to end.
-- **Phase 2** HDMI-CEC TV on/off, reboot, screenshot-on-demand (validated on Pi 5).
-- **Phase 3** Device groups + scheduler (content changes + TV power windows).
-- **Phase 4** Agent self-update, `curl | bash` hardening, flashable SD image.
-- **Phase 5** Digital media content (images/video/playlists) with local cache.
+- **Phase 2 ✅** HDMI-CEC TV on/off + reboot (validated on a Pi 5 → Samsung TV).
+- **Phase 3 ✅** Device groups + scheduler (content changes + TV power windows).
+- **Health monitoring ✅** Per-device CPU temp, uptime, memory, disk, and
+  undervoltage/throttle, surfaced on the dashboard.
+- **Provisioning ✅** Hardened `curl | bash` installer + flash-and-go first-boot
+  setup (see [PROVISIONING.md](PROVISIONING.md)).
+- **Next** Agent self-update / push-from-cloud, email offline alerting, and
+  optional digital media content (images/video/playlists).
 
 ## The wire protocol
 
