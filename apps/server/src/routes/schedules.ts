@@ -25,8 +25,10 @@ const ScheduleBody = z
     ]),
     kind: z.enum(['weekly', 'once']),
     time: z.string().regex(HHMM),
-    daysOfWeek: z.string().regex(DOW).optional(),
-    date: z.string().regex(DATE).optional(),
+    // The UI sends null for the field that doesn't apply to the chosen kind, so
+    // accept null as well as a valid string / undefined.
+    daysOfWeek: z.string().regex(DOW).nullable().optional(),
+    date: z.string().regex(DATE).nullable().optional(),
   })
   .refine((s) => (s.kind === 'weekly' ? !!s.daysOfWeek : !!s.date), {
     message: 'weekly needs daysOfWeek; once needs date',
