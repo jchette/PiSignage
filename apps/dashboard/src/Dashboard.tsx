@@ -12,6 +12,7 @@ import { AddDeviceModal } from './AddDeviceModal.tsx';
 import { ChangePasswordModal } from './ChangePasswordModal.tsx';
 import { GroupsPanel } from './GroupsPanel.tsx';
 import { SchedulesPanel } from './SchedulesPanel.tsx';
+import { UsersModal } from './UsersModal.tsx';
 
 type Tab = 'devices' | 'groups' | 'schedules';
 
@@ -23,6 +24,7 @@ export function Dashboard({ onLogout }: { onLogout: () => void }) {
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showUsers, setShowUsers] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -80,6 +82,9 @@ export function Dashboard({ onLogout }: { onLogout: () => void }) {
           <span className="muted">
             {online}/{devices.length} online
           </span>
+          <button className="ghost" onClick={() => setShowUsers(true)}>
+            Users
+          </button>
           <button className="ghost" onClick={() => setShowPassword(true)}>
             Password
           </button>
@@ -137,6 +142,7 @@ export function Dashboard({ onLogout }: { onLogout: () => void }) {
       )}
 
       {showPassword && <ChangePasswordModal onClose={() => setShowPassword(false)} />}
+      {showUsers && <UsersModal onClose={() => setShowUsers(false)} />}
     </div>
   );
 }

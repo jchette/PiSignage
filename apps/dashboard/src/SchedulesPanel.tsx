@@ -22,25 +22,39 @@ export function SchedulesPanel({
   onChanged: () => void;
 }) {
   const [showForm, setShowForm] = useState(false);
+  const [editing, setEditing] = useState<Schedule | null>(null);
 
   function nameForTarget(s: Schedule): string {
     if (s.targetType === 'group') return groups.find((g) => g.id === s.targetId)?.name ?? '(group)';
     return devices.find((d) => d.id === s.targetId)?.name ?? '(device)';
   }
 
+  const formOpen = showForm || editing !== null;
+
+  function closeForm() {
+    setShowForm(false);
+    setEditing(null);
+  }
+
   return (
     <>
       <div className="content-head">
         <h1>Schedules</h1>
-        <button onClick={() => setShowForm((v) => !v)}>{showForm ? 'Close' : '+ New schedule'}</button>
+        <button
+          onClick={() => (formOpen ? closeForm() : setShowForm(true))}
+        >
+          {formOpen ? 'Close' : '+ New schedule'}
+        </button>
       </div>
 
-      {showForm && (
+      {formOpen && (
         <ScheduleForm
+          key={editing?.id ?? 'new'}
+          initial={editing}
           devices={devices}
           groups={groups}
-          onCreated={() => {
-            setShowForm(false);
+          onSaved={() => {
+            closeForm();
             onChanged();
           }}
         />
@@ -57,7 +71,16 @@ export function SchedulesPanel({
       ) : (
         <div className="grid">
           {schedules.map((s) => (
-            <ScheduleCard key={s.id} schedule={s} target={nameForTarget(s)} onChanged={onChanged} />
+            <ScheduleCard
+              key={s.id}
+              schedule={s}
+              target={nameForTarget(s)}
+              onEdit={() => {
+                setShowForm(false);
+                setEditing(s);
+              }}
+              onChanged={onChanged}
+            />
           ))}
         </div>
       )}
@@ -86,10 +109,12 @@ function describeWhen(s: Schedule): string {
 function ScheduleCard({
   schedule: s,
   target,
+  onEdit,
   onChanged,
 }: {
   schedule: Schedule;
   target: string;
+  onEdit: () => void;
   onChanged: () => void;
 }) {
   const [busy, setBusy] = useState(false);
@@ -118,6 +143,9 @@ function ScheduleCard({
       <div className="small">{describeAction(s)}</div>
       <div className="muted small">{describeWhen(s)}</div>
       <div className="card-actions">
+        <button className="ghost" onClick={onEdit} disabled={busy}>
+          Edit
+        </button>
         <button
           className="ghost"
           onClick={() => act(() => api.setScheduleEnabled(s.id, !s.enabled))}
@@ -140,24 +168,44 @@ function ScheduleCard({
 }
 
 function ScheduleForm({
+  initial,
   devices,
   groups,
-  onCreated,
+  onSaved,
 }: {
+  initial: Schedule | null;
   devices: Device[];
   groups: Group[];
-  onCreated: () => void;
+  onSaved: () => void;
 }) {
-  const [name, setName] = useState('');
-  const [target, setTarget] = useState(''); // "device:<id>" | "group:<id>"
-  const [action, setAction] = useState<'tv_power' | 'set_content'>('tv_power');
-  const [on, setOn] = useState(true);
-  const [contentKind, setContentKind] = useState<'url' | 'blank'>('url');
-  const [url, setUrl] = useState('');
-  const [kind, setKind] = useState<'weekly' | 'once'>('weekly');
-  const [days, setDays] = useState<Set<number>>(new Set([1, 2, 3, 4, 5]));
-  const [date, setDate] = useState('');
-  const [time, setTime] = useState('08:00');
+  const [name, setName] = useState(initial?.name ?? '');
+  const [target, setTarget] = useState(
+    initial ? `${initial.targetType}:${initial.targetId}` : '',
+  );
+  const [action, setAction] = useState<'tv_power' | 'set_content'>(initial?.action ?? 'tv_power');
+  const [on, setOn] = useState(
+    initial?.action === 'tv_power' && 'on' in initial.payload ? initial.payload.on : true,
+  );
+  const initialContentKind =
+    initial?.action === 'set_content' && 'type' in initial.payload && initial.payload.type === 'blank'
+      ? 'blank'
+      : 'url';
+  const [contentKind, setContentKind] = useState<'url' | 'blank'>(initialContentKind);
+  const [url, setUrl] = useState(
+    initial && 'type' in (initial.payload as object) && (initial.payload as { type?: string }).type === 'url'
+      ? (initial.payload as { url: string }).url
+      : '',
+  );
+  const [kind, setKind] = useState<'weekly' | 'once'>(initial?.kind ?? 'weekly');
+  const [days, setDays] = useState<Set<number>>(
+    new Set(
+      initial?.kind === 'weekly' && initial.daysOfWeek
+        ? initial.daysOfWeek.split(',').filter(Boolean).map(Number)
+        : [1, 2, 3, 4, 5],
+    ),
+  );
+  const [date, setDate] = useState(initial?.date ?? '');
+  const [time, setTime] = useState(initial?.time ?? '08:00');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -183,22 +231,22 @@ function ScheduleForm({
 
     const body: NewSchedule = {
       name: name.trim(),
-      enabled: true,
+      enabled: initial?.enabled ?? true,
       targetType,
       targetId,
       action,
       payload,
       kind,
       time,
-      daysOfWeek:
-        kind === 'weekly' ? [...days].sort((a, b) => a - b).join(',') : null,
+      daysOfWeek: kind === 'weekly' ? [...days].sort((a, b) => a - b).join(',') : null,
       date: kind === 'once' ? date : null,
     };
 
     setBusy(true);
     try {
-      await api.createSchedule(body);
-      onCreated();
+      if (initial) await api.updateSchedule(initial.id, body);
+      else await api.createSchedule(body);
+      onSaved();
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -208,6 +256,7 @@ function ScheduleForm({
 
   return (
     <div className="card" style={{ marginBottom: 24 }}>
+      <div className="card-title">{initial ? 'Edit schedule' : 'New schedule'}</div>
       <label className="field">
         Name
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Open TVs" />
@@ -312,7 +361,7 @@ function ScheduleForm({
       {error && <div className="error">{error}</div>}
       <div className="card-actions">
         <button onClick={submit} disabled={busy}>
-          Create schedule
+          {initial ? 'Save changes' : 'Create schedule'}
         </button>
       </div>
     </div>

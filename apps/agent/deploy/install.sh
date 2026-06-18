@@ -159,6 +159,12 @@ if ! loginctl show-user "$USER" 2>/dev/null | grep -q 'Linger=yes'; then
   say "Enabling linger for $USER (sudo)"
   sudo loginctl enable-linger "$USER"
 fi
+# Persist the journal so `journalctl --user -u pisignage-agent` survives reboots
+# (the default volatile journal is wiped on boot, which makes remote debugging hard).
+if [ ! -d /var/log/journal ]; then
+  say "Enabling persistent journal logs (sudo)"
+  sudo mkdir -p /var/log/journal && sudo systemctl restart systemd-journald || true
+fi
 
 # ---------------------------------------------------------------------------
 # 7. Install + start the systemd USER service.

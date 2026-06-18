@@ -75,6 +75,13 @@ export function DeviceCard({ device, onChanged }: { device: Device; onChanged: (
           Refresh
         </button>
         <button
+          className="ghost"
+          onClick={() => act(() => api.setContent(device.id, { blank: true }))}
+          disabled={busy}
+        >
+          Blank
+        </button>
+        <button
           className="ghost danger"
           onClick={() => {
             if (confirm(`Remove "${device.name}"?`)) act(() => api.deleteDevice(device.id));

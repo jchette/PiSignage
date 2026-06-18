@@ -71,7 +71,39 @@ export async function scheduleRoutes(fastify: FastifyInstance): Promise<void> {
     return { schedule: serializeSchedule(row) };
   });
 
-  // Toggle enabled (lightweight edit). Full edit = delete + recreate from the UI.
+  // Full edit: replace all editable fields. Resets lastFiredKey so an edited
+  // time can fire again today.
+  fastify.put('/api/schedules/:id', { preHandler: requireAuth }, async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const parsed = ScheduleBody.safeParse(req.body);
+    if (!parsed.success) return reply.code(400).send({ error: 'invalid_body' });
+    const owned = await db.query.schedules.findFirst({
+      where: and(eq(schema.schedules.id, id), eq(schema.schedules.orgId, req.auth!.orgId)),
+    });
+    if (!owned) return reply.code(404).send({ error: 'not_found' });
+    const d = parsed.data;
+    await db
+      .update(schema.schedules)
+      .set({
+        name: d.name,
+        enabled: d.enabled ?? true,
+        targetType: d.targetType,
+        targetId: d.targetId,
+        action: d.action,
+        payload: d.payload,
+        kind: d.kind,
+        time: d.time,
+        daysOfWeek: d.kind === 'weekly' ? d.daysOfWeek : null,
+        date: d.kind === 'once' ? d.date : null,
+        lastFiredKey: null,
+      })
+      .where(eq(schema.schedules.id, id));
+    publish(req.auth!.orgId, { type: 'schedules.updated' });
+    const updated = await db.query.schedules.findFirst({ where: eq(schema.schedules.id, id) });
+    return { schedule: serializeSchedule(updated!) };
+  });
+
+  // Toggle enabled (lightweight). Full edit uses PUT above.
   fastify.patch('/api/schedules/:id', { preHandler: requireAuth }, async (req, reply) => {
     const { id } = req.params as { id: string };
     const parsed = z.object({ enabled: z.boolean() }).safeParse(req.body);

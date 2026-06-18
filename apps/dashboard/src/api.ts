@@ -44,6 +44,13 @@ export interface Schedule {
 
 export type NewSchedule = Omit<Schedule, 'id' | 'lastFiredKey' | 'createdAt'>;
 
+export interface User {
+  id: string;
+  email: string;
+  role: string;
+  createdAt: string;
+}
+
 const TOKEN_KEY = 'pisignage.token';
 
 export function getToken(): string | null {
@@ -54,6 +61,17 @@ export function setToken(token: string): void {
 }
 export function clearToken(): void {
   localStorage.removeItem(TOKEN_KEY);
+}
+
+/** Decode the signed-in user's id from the JWT payload (no verification needed client-side). */
+export function currentUserId(): string | null {
+  const t = getToken();
+  if (!t) return null;
+  try {
+    return JSON.parse(atob(t.split('.')[1])).userId ?? null;
+  } catch {
+    return null;
+  }
 }
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -141,6 +159,11 @@ export const api = {
   listSchedules: () => request<{ schedules: Schedule[] }>('/api/schedules'),
   createSchedule: (s: NewSchedule) =>
     request<{ schedule: Schedule }>('/api/schedules', { method: 'POST', body: JSON.stringify(s) }),
+  updateSchedule: (id: string, s: NewSchedule) =>
+    request<{ schedule: Schedule }>(`/api/schedules/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(s),
+    }),
   setScheduleEnabled: (id: string, enabled: boolean) =>
     request<{ ok: boolean }>(`/api/schedules/${id}`, {
       method: 'PATCH',
@@ -148,6 +171,15 @@ export const api = {
     }),
   deleteSchedule: (id: string) =>
     request<{ ok: boolean }>(`/api/schedules/${id}`, { method: 'DELETE' }),
+
+  // --- Users ---
+  listUsers: () => request<{ users: User[] }>('/api/users'),
+  createUser: (email: string, password: string) =>
+    request<{ user: User }>('/api/users', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    }),
+  deleteUser: (id: string) => request<{ ok: boolean }>(`/api/users/${id}`, { method: 'DELETE' }),
 };
 
 /** Open the SSE stream for live device updates. Token goes in the query string. */

@@ -43,8 +43,23 @@ export async function registerDeviceGateway(fastify: FastifyInstance): Promise<v
       );
     }
 
+    // Liveness: a hard power-loss won't send a TCP FIN, so without this the socket
+    // could linger "online" for minutes. We ping every interval; the ws client
+    // auto-replies with a pong. If a ping goes unanswered, terminate so `close`
+    // fires and the device is marked offline (within ~2 intervals).
+    let isAlive = true;
+    socket.on('pong', () => {
+      isAlive = true;
+    });
     const ping = setInterval(() => {
+      if (!isAlive) {
+        socket.terminate();
+        return;
+      }
+      isAlive = false;
       try {
+        socket.ping();
+        // App-level ping too, so the agent emits a heartbeat (refreshes tvState).
         socket.send(JSON.stringify({ t: 'ping' }));
       } catch {
         /* ignore */
