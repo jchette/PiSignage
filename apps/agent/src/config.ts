@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { AGENT_VERSION } from './version.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const defaultStateDir = path.resolve(here, '..', '.state');
@@ -13,7 +14,7 @@ export const config = {
     process.env.PISIGNAGE_KIOSK_CMD ??
     'chromium --kiosk --ozone-platform=wayland --no-first-run --noerrdialogs ' +
       '--disable-infobars --disable-session-crashed-bubble --password-store=basic {url}',
-  agentVersion: '0.1.0',
+  agentVersion: AGENT_VERSION,
   heartbeatMs: 15000,
 };
 
