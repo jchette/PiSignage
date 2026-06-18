@@ -83,7 +83,12 @@ grep -qsF "$pathline" "$HOME/.profile" 2>/dev/null || echo "$pathline" >> "$HOME
 # ---------------------------------------------------------------------------
 if [ -d "$REPO_DIR/.git" ]; then
   say "Updating existing checkout at $REPO_DIR"
-  git -C "$REPO_DIR" pull --ff-only
+  # Force-sync to the remote tip rather than `git pull --ff-only`: a prior
+  # `npm install` can modify the tracked package-lock.json, which makes pull
+  # refuse to fast-forward and (under `set -e`) silently abort the whole update
+  # — leaving the old agent code running. reset --hard ignores local churn.
+  git -C "$REPO_DIR" fetch --depth 1 origin main
+  git -C "$REPO_DIR" reset --hard FETCH_HEAD
 else
   say "Cloning $REPO_URL -> $REPO_DIR"
   git clone --depth 1 "$REPO_URL" "$REPO_DIR"
