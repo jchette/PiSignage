@@ -118,6 +118,13 @@ function GroupCard({
           >
             Set
           </button>
+          <button
+            className="ghost"
+            onClick={() => act(() => api.setGroupContent(group.id, { blank: true }))}
+            disabled={busy}
+          >
+            Blank
+          </button>
         </div>
       </label>
 

@@ -5,6 +5,7 @@ import {
   openEventStream,
   type Device,
   type Group,
+  type Org,
   type Schedule,
 } from './api.ts';
 import { DeviceCard } from './DeviceCard.tsx';
@@ -12,6 +13,7 @@ import { AddDeviceModal } from './AddDeviceModal.tsx';
 import { ChangePasswordModal } from './ChangePasswordModal.tsx';
 import { GroupsPanel } from './GroupsPanel.tsx';
 import { SchedulesPanel } from './SchedulesPanel.tsx';
+import { SettingsModal } from './SettingsModal.tsx';
 import { UsersModal } from './UsersModal.tsx';
 
 type Tab = 'devices' | 'groups' | 'schedules';
@@ -21,21 +23,25 @@ export function Dashboard({ onLogout }: { onLogout: () => void }) {
   const [devices, setDevices] = useState<Device[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [schedules, setSchedules] = useState<Schedule[]>([]);
+  const [org, setOrg] = useState<Org | null>(null);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showUsers, setShowUsers] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
   const load = useCallback(async () => {
     try {
-      const [d, g, s] = await Promise.all([
+      const [d, g, s, o] = await Promise.all([
         api.listDevices(),
         api.listGroups(),
         api.listSchedules(),
+        api.getOrg(),
       ]);
       setDevices(d.devices);
       setGroups(g.groups);
       setSchedules(s.schedules);
+      setOrg(o.org);
     } catch (err) {
       if ((err as Error).message === 'unauthorized') onLogout();
     } finally {
@@ -79,11 +85,14 @@ export function Dashboard({ onLogout }: { onLogout: () => void }) {
           ))}
         </nav>
         <div className="topbar-meta">
-          <span className="muted">
-            {online}/{devices.length} online
+          <span className="live-stat">
+            <b>{online}</b> / {devices.length} online
           </span>
           <button className="ghost" onClick={() => setShowUsers(true)}>
             Users
+          </button>
+          <button className="ghost" onClick={() => setShowSettings(true)}>
+            Settings
           </button>
           <button className="ghost" onClick={() => setShowPassword(true)}>
             Password
@@ -126,6 +135,7 @@ export function Dashboard({ onLogout }: { onLogout: () => void }) {
             schedules={schedules}
             devices={devices}
             groups={groups}
+            timezone={org?.timezone ?? 'America/New_York'}
             onChanged={load}
           />
         )}
@@ -143,6 +153,9 @@ export function Dashboard({ onLogout }: { onLogout: () => void }) {
 
       {showPassword && <ChangePasswordModal onClose={() => setShowPassword(false)} />}
       {showUsers && <UsersModal onClose={() => setShowUsers(false)} />}
+      {showSettings && org && (
+        <SettingsModal org={org} onClose={() => setShowSettings(false)} onSaved={load} />
+      )}
     </div>
   );
 }

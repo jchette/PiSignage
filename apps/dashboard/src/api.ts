@@ -1,6 +1,15 @@
 // Same-origin in dev (Vite proxy). Set VITE_API_BASE for production builds.
 const API_BASE = import.meta.env.VITE_API_BASE ?? '';
 
+export interface DeviceMetrics {
+  cpuTempC: number | null;
+  uptimeSec: number | null;
+  memUsedPct: number | null;
+  diskUsedPct: number | null;
+  throttledFlags: number | null;
+  at: string | null;
+}
+
 export interface Device {
   id: string;
   name: string;
@@ -11,6 +20,7 @@ export interface Device {
   agentVersion: string | null;
   tvState: 'on' | 'off' | 'unknown';
   content: { type: 'url'; url: string } | { type: 'blank' } | null;
+  metrics: DeviceMetrics;
   createdAt: string;
 }
 
@@ -49,6 +59,12 @@ export interface User {
   email: string;
   role: string;
   createdAt: string;
+}
+
+export interface Org {
+  id: string;
+  name: string;
+  timezone: string;
 }
 
 const TOKEN_KEY = 'pisignage.token';
@@ -180,6 +196,11 @@ export const api = {
       body: JSON.stringify({ email, password }),
     }),
   deleteUser: (id: string) => request<{ ok: boolean }>(`/api/users/${id}`, { method: 'DELETE' }),
+
+  // --- Org settings ---
+  getOrg: () => request<{ org: Org }>('/api/org'),
+  updateOrg: (patch: Partial<Pick<Org, 'name' | 'timezone'>>) =>
+    request<{ org: Org }>('/api/org', { method: 'PATCH', body: JSON.stringify(patch) }),
 };
 
 /** Open the SSE stream for live device updates. Token goes in the query string. */

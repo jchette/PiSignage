@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { sql } from 'drizzle-orm';
-import { index, integer, primaryKey, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { index, integer, primaryKey, real, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 import type { Content, TvState } from '@pisignage/shared';
 
 /** What a schedule does when it fires: set content, or switch TV power. */
@@ -59,6 +59,13 @@ export const devices = sqliteTable(
     tvState: text('tv_state').$type<TvState>().default('unknown'),
     // Desired content for this device (Phase 1: a URL). Null = blank.
     content: text('content', { mode: 'json' }).$type<Content | null>(),
+    // Health metrics from the latest heartbeat (null until first report).
+    cpuTempC: real('cpu_temp_c'),
+    uptimeSec: integer('uptime_sec'),
+    memUsedPct: integer('mem_used_pct'),
+    diskUsedPct: integer('disk_used_pct'),
+    throttledFlags: integer('throttled_flags'),
+    metricsAt: integer('metrics_at', { mode: 'timestamp' }),
     createdAt: integer('created_at', { mode: 'timestamp' })
       .notNull()
       .$defaultFn(() => new Date()),

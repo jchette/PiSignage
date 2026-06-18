@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import cors from '@fastify/cors';
+import rateLimit from '@fastify/rate-limit';
 import fastifyStatic from '@fastify/static';
 import websocket from '@fastify/websocket';
 import Fastify from 'fastify';
@@ -9,6 +10,7 @@ import { config } from './config.js';
 import { authRoutes } from './routes/auth.js';
 import { deviceRoutes } from './routes/devices.js';
 import { groupRoutes } from './routes/groups.js';
+import { orgRoutes } from './routes/org.js';
 import { pairingRoutes } from './routes/pairing.js';
 import { scheduleRoutes } from './routes/schedules.js';
 import { userRoutes } from './routes/users.js';
@@ -19,6 +21,9 @@ const dashboardDist = resolve(dirname(fileURLToPath(import.meta.url)), '../../da
 
 export async function buildApp() {
   const app = Fastify({
+    // Behind Railway's proxy req.ip is the proxy unless we trust X-Forwarded-For;
+    // without this the rate limiter would bucket every client together.
+    trustProxy: true,
     logger: {
       level: process.env.LOG_LEVEL ?? 'info',
       transport:
@@ -30,6 +35,9 @@ export async function buildApp() {
 
   await app.register(cors, { origin: config.corsOrigins, credentials: true });
   await app.register(websocket);
+  // Opt-in only: routes enable throttling via `config.rateLimit` (see auth routes).
+  // Global stays off so device WS/SSE and dashboard polling aren't throttled.
+  await app.register(rateLimit, { global: false });
 
   app.get('/health', async () => ({ ok: true, ts: Date.now() }));
 
@@ -39,6 +47,7 @@ export async function buildApp() {
   await app.register(groupRoutes);
   await app.register(scheduleRoutes);
   await app.register(userRoutes);
+  await app.register(orgRoutes);
   await app.register(registerDeviceGateway);
 
   // Serve the built React dashboard from the same origin (no CORS, single deploy).

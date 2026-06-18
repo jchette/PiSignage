@@ -16,6 +16,14 @@ export function serializeDevice(row: DeviceRow) {
     agentVersion: row.agentVersion,
     tvState: row.tvState ?? 'unknown',
     content: row.content ?? null,
+    metrics: {
+      cpuTempC: row.cpuTempC ?? null,
+      uptimeSec: row.uptimeSec ?? null,
+      memUsedPct: row.memUsedPct ?? null,
+      diskUsedPct: row.diskUsedPct ?? null,
+      throttledFlags: row.throttledFlags ?? null,
+      at: row.metricsAt?.toISOString() ?? null,
+    },
     createdAt: row.createdAt.toISOString(),
   };
 }

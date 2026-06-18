@@ -1,5 +1,13 @@
 import { useState } from 'react';
 import { api, type Device } from './api.ts';
+import {
+  formatUptime,
+  hasMetrics,
+  pctLevel,
+  powerHealth,
+  tempLevel,
+  type Level,
+} from './metrics.ts';
 
 export function DeviceCard({ device, onChanged }: { device: Device; onChanged: () => void }) {
   const currentUrl = device.content?.type === 'url' ? device.content.url : '';
@@ -26,18 +34,64 @@ export function DeviceCard({ device, onChanged }: { device: Device; onChanged: (
     }
   }
 
+  const m = device.metrics;
   const lastSeen = device.lastSeenAt ? new Date(device.lastSeenAt).toLocaleString() : 'never';
   const dirty = url !== currentUrl;
+  const power = powerHealth(m.throttledFlags);
+
+  // Worst severity across health signals drives the card's left signal rail.
+  const worst = worstLevel([
+    tempLevel(m.cpuTempC),
+    pctLevel(m.memUsedPct),
+    pctLevel(m.diskUsedPct),
+    power?.level ?? 'ok',
+  ]);
+  const rail =
+    device.status === 'offline'
+      ? ''
+      : worst === 'crit'
+        ? 'is-crit'
+        : worst === 'warn'
+          ? 'is-alert'
+          : 'is-online';
 
   return (
-    <div className="card">
+    <div className={`card signal ${rail}`}>
       <div className="card-head">
-        <div>
-          <div className="card-title">{device.name}</div>
-          {device.location && <div className="muted small">{device.location}</div>}
+        <div className="card-id">
+          <span className={`led ${device.status}`} />
+          <div>
+            <div className="card-title">{device.name}</div>
+            {device.location && <div className="muted small">{device.location}</div>}
+          </div>
         </div>
         <span className={`status ${device.status}`}>{device.status}</span>
       </div>
+
+      {power && (
+        <div className={`power-alert ${power.level}`}>{power.label}</div>
+      )}
+
+      {hasMetrics(m) ? (
+        <div className="metrics">
+          <Metric label="CPU temp" value={fmt(m.cpuTempC, '°C')} level={tempLevel(m.cpuTempC)} />
+          <Metric label="Uptime" value={formatUptime(m.uptimeSec)} />
+          <Metric
+            label="Memory"
+            value={fmt(m.memUsedPct, '%')}
+            level={pctLevel(m.memUsedPct)}
+            gauge={m.memUsedPct}
+          />
+          <Metric
+            label="Disk"
+            value={fmt(m.diskUsedPct, '%')}
+            level={pctLevel(m.diskUsedPct)}
+            gauge={m.diskUsedPct}
+          />
+        </div>
+      ) : (
+        <div className="metrics-empty">No health data yet</div>
+      )}
 
       <label className="field">
         URL
@@ -55,7 +109,9 @@ export function DeviceCard({ device, onChanged }: { device: Device; onChanged: (
       </label>
 
       <div className="field">
-        TV power <span className="muted small">({device.tvState})</span>
+        <span>
+          TV power <span className={`tag ${device.tvState}`}>{device.tvState}</span>
+        </span>
         <div className="card-actions">
           <button onClick={() => act(() => api.setTvPower(device.id, true))} disabled={busy}>
             On
@@ -67,20 +123,20 @@ export function DeviceCard({ device, onChanged }: { device: Device; onChanged: (
           >
             Off
           </button>
+          <button className="ghost" onClick={() => act(() => api.refresh(device.id))} disabled={busy}>
+            Refresh
+          </button>
+          <button
+            className="ghost"
+            onClick={() => act(() => api.setContent(device.id, { blank: true }))}
+            disabled={busy}
+          >
+            Blank
+          </button>
         </div>
       </div>
 
       <div className="card-actions">
-        <button className="ghost" onClick={() => act(() => api.refresh(device.id))} disabled={busy}>
-          Refresh
-        </button>
-        <button
-          className="ghost"
-          onClick={() => act(() => api.setContent(device.id, { blank: true }))}
-          disabled={busy}
-        >
-          Blank
-        </button>
         <button
           className="ghost danger"
           onClick={() => {
@@ -92,10 +148,48 @@ export function DeviceCard({ device, onChanged }: { device: Device; onChanged: (
         </button>
       </div>
 
-      <div className="card-foot muted small">
-        <span>{device.model ?? 'unknown model'}</span>
+      <div className="card-foot">
+        <span>{device.model ?? 'unknown'}{device.agentVersion ? ` · v${device.agentVersion}` : ''}</span>
         <span>seen {lastSeen}</span>
       </div>
     </div>
   );
+}
+
+function Metric({
+  label,
+  value,
+  level = 'ok',
+  gauge,
+}: {
+  label: string;
+  value: string;
+  level?: Level;
+  gauge?: number | null;
+}) {
+  return (
+    <div className="metric">
+      <div className="metric-top">
+        <span className="metric-label">{label}</span>
+      </div>
+      <span className={`metric-value ${level}`}>{value}</span>
+      {gauge != null && (
+        <div className="gauge">
+          <span className={level} style={{ width: `${Math.min(100, Math.max(0, gauge))}%` }} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Render a numeric metric with its unit, or an em-dash when absent. */
+function fmt(n: number | null, unit: string): string {
+  if (n == null) return '—';
+  return `${n}${unit}`;
+}
+
+function worstLevel(levels: Level[]): Level {
+  if (levels.includes('crit')) return 'crit';
+  if (levels.includes('warn')) return 'warn';
+  return 'ok';
 }

@@ -91,6 +91,14 @@ export async function registerDeviceGateway(fastify: FastifyInstance): Promise<v
               lastSeenAt: new Date(),
               tvState: msg.tvState ?? device.tvState,
               agentVersion: msg.agentVersion ?? device.agentVersion,
+              // Health metrics are best-effort; `?? null` lets a metric that
+              // stops reporting (e.g. moved off Pi hardware) clear rather than stick.
+              cpuTempC: msg.cpuTempC ?? null,
+              uptimeSec: msg.uptimeSec ?? null,
+              memUsedPct: msg.memUsedPct ?? null,
+              diskUsedPct: msg.diskUsedPct ?? null,
+              throttledFlags: msg.throttledFlags ?? null,
+              metricsAt: new Date(),
             })
             .where(eq(schema.devices.id, deviceId));
           publish(orgId, { type: 'device.updated', deviceId });

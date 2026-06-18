@@ -3,6 +3,7 @@ import { parseServerMessage, type Content, type DeviceMessage, type TvState } fr
 import { setTvPower } from './cec.js';
 import { config, wsUrl } from './config.js';
 import type { Display } from './display/index.js';
+import { collectMetrics } from './metrics.js';
 
 /**
  * Maintains the persistent outbound WebSocket to the cloud: sends hello +
@@ -121,13 +122,14 @@ export class Agent {
     }
   }
 
-  private sendHeartbeat(): void {
+  private async sendHeartbeat(): Promise<void> {
+    const metrics = await collectMetrics();
     this.send({
       t: 'heartbeat',
       currentContent: this.currentContent,
       tvState: this.tvState,
-      uptimeSec: Math.round(process.uptime()),
       agentVersion: config.agentVersion,
+      ...metrics,
     });
   }
 

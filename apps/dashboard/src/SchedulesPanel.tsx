@@ -14,11 +14,13 @@ export function SchedulesPanel({
   schedules,
   devices,
   groups,
+  timezone,
   onChanged,
 }: {
   schedules: Schedule[];
   devices: Device[];
   groups: Group[];
+  timezone: string;
   onChanged: () => void;
 }) {
   const [showForm, setShowForm] = useState(false);
@@ -53,6 +55,7 @@ export function SchedulesPanel({
           initial={editing}
           devices={devices}
           groups={groups}
+          timezone={timezone}
           onSaved={() => {
             closeForm();
             onChanged();
@@ -75,6 +78,7 @@ export function SchedulesPanel({
               key={s.id}
               schedule={s}
               target={nameForTarget(s)}
+              timezone={timezone}
               onEdit={() => {
                 setShowForm(false);
                 setEditing(s);
@@ -106,14 +110,37 @@ function describeWhen(s: Schedule): string {
   return `${s.date} at ${s.time}`;
 }
 
+/** Today's date as YYYY-MM-DD in the given IANA zone (matches schedule.date). */
+function todayInTz(tz: string): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: tz,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
+}
+
+/**
+ * For one-off schedules, whether they're done: either already fired, or their
+ * date is in the past. Weekly schedules recur, so never "done".
+ */
+function onceStatus(s: Schedule, tz: string): 'fired' | 'expired' | null {
+  if (s.kind !== 'once') return null;
+  if (s.lastFiredKey) return 'fired';
+  if (s.date && s.date < todayInTz(tz)) return 'expired';
+  return null;
+}
+
 function ScheduleCard({
   schedule: s,
   target,
+  timezone,
   onEdit,
   onChanged,
 }: {
   schedule: Schedule;
   target: string;
+  timezone: string;
   onEdit: () => void;
   onChanged: () => void;
 }) {
@@ -127,8 +154,9 @@ function ScheduleCard({
       setBusy(false);
     }
   }
+  const past = onceStatus(s, timezone);
   return (
-    <div className="card">
+    <div className="card" style={past ? { opacity: 0.6 } : undefined}>
       <div className="card-head">
         <div>
           <div className="card-title">{s.name}</div>
@@ -136,9 +164,13 @@ function ScheduleCard({
             {target} · {s.targetType}
           </div>
         </div>
-        <span className={`status ${s.enabled ? 'online' : 'offline'}`}>
-          {s.enabled ? 'on' : 'off'}
-        </span>
+        {past ? (
+          <span className="status offline">{past}</span>
+        ) : (
+          <span className={`status ${s.enabled ? 'online' : 'offline'}`}>
+            {s.enabled ? 'on' : 'off'}
+          </span>
+        )}
       </div>
       <div className="small">{describeAction(s)}</div>
       <div className="muted small">{describeWhen(s)}</div>
@@ -171,11 +203,13 @@ function ScheduleForm({
   initial,
   devices,
   groups,
+  timezone,
   onSaved,
 }: {
   initial: Schedule | null;
   devices: Device[];
   groups: Group[];
+  timezone: string;
   onSaved: () => void;
 }) {
   const [name, setName] = useState(initial?.name ?? '');
@@ -354,7 +388,7 @@ function ScheduleForm({
       )}
 
       <label className="field">
-        Time (Eastern)
+        Time ({timezone})
         <input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
       </label>
 

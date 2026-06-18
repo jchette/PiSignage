@@ -16,7 +16,11 @@ const ChangePasswordBody = z.object({
 });
 
 export async function authRoutes(fastify: FastifyInstance): Promise<void> {
-  fastify.post('/api/auth/login', async (req, reply) => {
+  fastify.post('/api/auth/login', {
+    // Brute-force throttle: per-IP, on a public URL. Counts every attempt
+    // (including failures) so guessing is rate-capped.
+    config: { rateLimit: { max: 10, timeWindow: '1 minute' } },
+  }, async (req, reply) => {
     const parsed = LoginBody.safeParse(req.body);
     if (!parsed.success) {
       return reply.code(400).send({ error: 'invalid_body' });
@@ -39,7 +43,10 @@ export async function authRoutes(fastify: FastifyInstance): Promise<void> {
   });
 
   // Change the signed-in user's own password (verifies the current one first).
-  fastify.post('/api/auth/password', { preHandler: requireAuth }, async (req, reply) => {
+  fastify.post('/api/auth/password', {
+    preHandler: requireAuth,
+    config: { rateLimit: { max: 10, timeWindow: '1 minute' } },
+  }, async (req, reply) => {
     const parsed = ChangePasswordBody.safeParse(req.body);
     if (!parsed.success) {
       return reply.code(400).send({ error: 'invalid_body' });

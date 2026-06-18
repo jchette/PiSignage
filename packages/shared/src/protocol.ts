@@ -50,6 +50,12 @@ export const HeartbeatSchema = z.object({
   tvState: TvStateSchema.optional(),
   cpuTempC: z.number().optional(),
   uptimeSec: z.number().optional(),
+  memUsedPct: z.number().optional(),
+  diskUsedPct: z.number().optional(),
+  // Raw `vcgencmd get_throttled` bitfield (0 = healthy). Decoded by consumers.
+  // bit0 under-voltage now, bit2 throttled now, bit16 under-voltage since boot,
+  // bit18 throttled since boot. Absent on non-Pi hardware.
+  throttledFlags: z.number().int().optional(),
   agentVersion: z.string().optional(),
 });
 
