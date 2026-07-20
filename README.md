@@ -2,7 +2,8 @@
 
 Cloud-controlled Raspberry Pi digital signage. Each Pi drives a TV (currently a
 URL per screen), controlled from a web dashboard — with device grouping,
-scheduling, HDMI-CEC TV power, and per-device health monitoring.
+scheduling, HDMI-CEC TV power, per-device health monitoring, per-TV zoom, and
+opt-in agent auto-update.
 
 ## Architecture
 
@@ -124,11 +125,16 @@ first-boot hook runs the installer for you. Imager username **must** be `pi`. Se
   undervoltage/throttle, surfaced on the dashboard.
 - **Provisioning ✅** Hardened `curl | bash` installer + flash-and-go first-boot
   setup (see [PROVISIONING.md](PROVISIONING.md)).
-- **Next** Agent self-update / push-from-cloud, email offline alerting, and
-  optional digital media content (images/video/playlists).
+- **Per-TV zoom ✅** Chromium device-scale-factor per device — fixes tiny
+  content on 4K panels.
+- **Agent auto-update ✅** Opt-in per device from the dashboard; the agent
+  periodically pulls, rebuilds, and restarts itself (off by default).
+- **Next** Email offline alerting and optional digital media content
+  (images/video/playlists).
 
 ## The wire protocol
 
 Defined in `packages/shared/src/protocol.ts`. Device→server events: `hello`,
-`heartbeat`, `ack`. Server→device commands: `set_content`, `tv_power`, `reboot`,
-`refresh`, `ping`. Pairing is plain HTTPS (the device has no token yet).
+`heartbeat`, `ack`. Server→device commands: `set_content` (carries `zoom`),
+`tv_power`, `reboot`, `refresh`, `ping`, `set_auto_update`. Pairing is plain
+HTTPS (the device has no token yet).
