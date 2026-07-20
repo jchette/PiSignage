@@ -8,7 +8,7 @@ import { addSubscriber, publish } from '../events.js';
 import { requireAuth } from '../middleware.js';
 import { serializeDevice } from '../serialize.js';
 import { verifyAuthToken } from '../auth.js';
-import { applyContent, applyRefresh, applyTvPower } from '../services/control.js';
+import { applyContent, applyRefresh, applyTvPower, applyZoom } from '../services/control.js';
 import { isDeviceOnline } from '../ws/registry.js';
 
 const ClaimBody = z.object({
@@ -24,6 +24,12 @@ const SetContentBody = z.object({
 
 const TvPowerBody = z.object({
   on: z.boolean(),
+});
+
+const SetZoomBody = z.object({
+  // Chromium device-scale-factor. 1 = normal; >1 makes pages render bigger,
+  // which is the fix for tiny text/UI on 4K panels.
+  zoom: z.number().min(0.25).max(4),
 });
 
 export async function deviceRoutes(fastify: FastifyInstance): Promise<void> {
@@ -93,6 +99,20 @@ export async function deviceRoutes(fastify: FastifyInstance): Promise<void> {
       : { type: 'url', url: parsed.data.url! };
 
     const delivered = await applyContent(id, req.auth!.orgId, content);
+    return { ok: true, delivered };
+  });
+
+  // Set the per-TV Chromium zoom (device-scale-factor). Independent of content,
+  // so it survives URL changes and applies to whatever's currently showing.
+  fastify.post('/api/devices/:id/zoom', { preHandler: requireAuth }, async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const parsed = SetZoomBody.safeParse(req.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: 'invalid_body' });
+    }
+    const device = await getOwnedDevice(id, req.auth!.orgId);
+    if (!device) return reply.code(404).send({ error: 'not_found' });
+    const delivered = await applyZoom(id, req.auth!.orgId, parsed.data.zoom);
     return { ok: true, delivered };
   });
 

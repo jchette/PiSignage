@@ -6,10 +6,10 @@ import type { Display } from './index.js';
 export class ConsoleDisplay implements Display {
   private current: Content | null = null;
 
-  async show(content: Content): Promise<void> {
+  async show(content: Content, zoom = 1): Promise<void> {
     this.current = content;
     if (content.type === 'url') {
-      console.log(`\n[DISPLAY] ▶ showing URL: ${content.url}\n`);
+      console.log(`\n[DISPLAY] ▶ showing URL: ${content.url} (zoom=${zoom})\n`);
     } else {
       console.log(`\n[DISPLAY] ▶ blank screen\n`);
     }

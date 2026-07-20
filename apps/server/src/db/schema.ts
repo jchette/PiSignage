@@ -59,6 +59,9 @@ export const devices = sqliteTable(
     tvState: text('tv_state').$type<TvState>().default('unknown'),
     // Desired content for this device (Phase 1: a URL). Null = blank.
     content: text('content', { mode: 'json' }).$type<Content | null>(),
+    // Chromium device-scale-factor for this TV (1 = normal). Fixes pages
+    // rendering tiny on 4K panels laid out for ~1080p.
+    zoom: real('zoom').notNull().default(1),
     // Health metrics from the latest heartbeat (null until first report).
     cpuTempC: real('cpu_temp_c'),
     uptimeSec: integer('uptime_sec'),

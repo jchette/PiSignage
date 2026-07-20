@@ -39,7 +39,12 @@ export async function registerDeviceGateway(fastify: FastifyInstance): Promise<v
     // Push current desired content immediately so the screen is correct on connect.
     if (device.content) {
       socket.send(
-        JSON.stringify({ t: 'set_content', commandId: 'initial', content: device.content }),
+        JSON.stringify({
+          t: 'set_content',
+          commandId: 'initial',
+          content: device.content,
+          zoom: device.zoom,
+        }),
       );
     }
 

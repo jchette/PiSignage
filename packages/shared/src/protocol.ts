@@ -78,11 +78,13 @@ export type DeviceMessage = z.infer<typeof DeviceMessageSchema>;
 // Server -> Device (commands)
 // ---------------------------------------------------------------------------
 
-/** Tell the device what to render. */
+/** Tell the device what to render. `zoom` is a Chromium device-scale-factor
+ *  multiplier (1 = normal); useful for 4K panels where pages render tiny. */
 export const SetContentSchema = z.object({
   t: z.literal('set_content'),
   commandId: z.string(),
   content: ContentSchema,
+  zoom: z.number().positive().default(1),
 });
 
 /** HDMI-CEC TV power control (Phase 2 wiring; command defined now). */

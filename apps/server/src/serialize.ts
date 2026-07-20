@@ -16,6 +16,7 @@ export function serializeDevice(row: DeviceRow) {
     agentVersion: row.agentVersion,
     tvState: row.tvState ?? 'unknown',
     content: row.content ?? null,
+    zoom: row.zoom ?? 1,
     metrics: {
       cpuTempC: row.cpuTempC ?? null,
       uptimeSec: row.uptimeSec ?? null,

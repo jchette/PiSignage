@@ -80,7 +80,7 @@ export class Agent {
     switch (msg.t) {
       case 'set_content':
         this.currentContent = msg.content;
-        await this.display.show(msg.content);
+        await this.display.show(msg.content, msg.zoom);
         if (msg.commandId !== 'initial') this.ack(msg.commandId, true);
         break;
       case 'refresh':

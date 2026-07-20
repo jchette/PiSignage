@@ -6,7 +6,7 @@ import { ChromiumDisplay } from './chromium.js';
 
 /** A display backend renders content on the screen and shows the pairing code. */
 export interface Display {
-  show(content: Content): Promise<void>;
+  show(content: Content, zoom?: number): Promise<void>;
   refresh(): Promise<void>;
   showPairingCode(code: string, serverUrl: string): Promise<void>;
 }

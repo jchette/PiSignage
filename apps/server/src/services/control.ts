@@ -16,8 +16,35 @@ export async function applyContent(
   orgId: string,
   content: Content,
 ): Promise<boolean> {
-  await db.update(schema.devices).set({ content }).where(eq(schema.devices.id, deviceId));
-  const delivered = sendToDevice(deviceId, { t: 'set_content', commandId: nanoid(), content });
+  const [device] = await db
+    .update(schema.devices)
+    .set({ content })
+    .where(eq(schema.devices.id, deviceId))
+    .returning();
+  const delivered = sendToDevice(deviceId, {
+    t: 'set_content',
+    commandId: nanoid(),
+    content,
+    zoom: device?.zoom ?? 1,
+  });
+  publish(orgId, { type: 'device.updated', deviceId });
+  return delivered;
+}
+
+/** Set the per-TV Chromium scale factor and relaunch the kiosk with it applied. */
+export async function applyZoom(deviceId: string, orgId: string, zoom: number): Promise<boolean> {
+  const [device] = await db
+    .update(schema.devices)
+    .set({ zoom })
+    .where(eq(schema.devices.id, deviceId))
+    .returning();
+  if (!device) return false;
+  const delivered = sendToDevice(deviceId, {
+    t: 'set_content',
+    commandId: nanoid(),
+    content: device.content ?? { type: 'blank' },
+    zoom,
+  });
   publish(orgId, { type: 'device.updated', deviceId });
   return delivered;
 }

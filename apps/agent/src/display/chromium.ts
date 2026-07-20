@@ -19,30 +19,36 @@ const RESPAWN_DELAY_MS = 3000;
 export class ChromiumDisplay implements Display {
   private child: ChildProcess | null = null;
   private currentContent: Content | null = null;
+  private currentZoom = 1;
 
-  async show(content: Content): Promise<void> {
+  async show(content: Content, zoom = 1): Promise<void> {
     this.currentContent = content;
+    this.currentZoom = zoom;
     if (content.type === 'blank') {
       this.kill();
       return;
     }
-    this.launchUrl(content.url);
+    this.launchUrl(content.url, zoom);
   }
 
   async refresh(): Promise<void> {
     if (this.currentContent?.type === 'url') {
-      this.launchUrl(this.currentContent.url);
+      this.launchUrl(this.currentContent.url, this.currentZoom);
     }
   }
 
   async showPairingCode(code: string, serverUrl: string): Promise<void> {
     const file = this.writePairingPage(code, serverUrl);
-    this.launchUrl(`file://${file}`);
+    this.launchUrl(`file://${file}`, 1);
   }
 
-  private launchUrl(url: string): void {
+  private launchUrl(url: string, zoom: number): void {
     this.kill();
-    const cmd = config.kioskCmd.replace('{url}', url);
+    // A device-scale-factor other than 1 goes in as a Chromium flag ahead of the
+    // URL — valid anywhere before the trailing positional URL argument, so it
+    // works regardless of how a custom PISIGNAGE_KIOSK_CMD orders its flags.
+    const target = zoom !== 1 ? `--force-device-scale-factor=${zoom} ${url}` : url;
+    const cmd = config.kioskCmd.replace('{url}', target);
     // Launch via shell (so the command template works as written) and detached,
     // which puts chromium in its own process group we can kill wholesale.
     const child = spawn(cmd, { shell: true, detached: true, stdio: 'inherit' });
@@ -56,10 +62,11 @@ export class ChromiumDisplay implements Display {
       // 24/7 signage: respawn so a browser crash doesn't leave a black screen.
       if (this.currentContent?.type === 'url') {
         const respawnUrl = this.currentContent.url;
+        const respawnZoom = this.currentZoom;
         setTimeout(() => {
           if (this.currentContent?.type === 'url' && this.currentContent.url === respawnUrl) {
             console.error('[kiosk] respawning browser');
-            this.launchUrl(respawnUrl);
+            this.launchUrl(respawnUrl, respawnZoom);
           }
         }, RESPAWN_DELAY_MS);
       }

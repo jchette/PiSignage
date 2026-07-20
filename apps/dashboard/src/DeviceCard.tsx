@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { api, type Device } from './api.ts';
 import {
   formatUptime,
@@ -12,12 +12,26 @@ import {
 export function DeviceCard({ device, onChanged }: { device: Device; onChanged: () => void }) {
   const currentUrl = device.content?.type === 'url' ? device.content.url : '';
   const [url, setUrl] = useState(currentUrl);
+  const [zoom, setZoom] = useState(String(device.zoom ?? 1));
   const [busy, setBusy] = useState(false);
 
   async function save() {
     setBusy(true);
     try {
       await api.setContent(device.id, { url });
+      onChanged();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  useEffect(() => setZoom(String(device.zoom ?? 1)), [device.zoom]);
+
+  async function saveZoom(next: string) {
+    setZoom(next);
+    setBusy(true);
+    try {
+      await api.setZoom(device.id, Number(next));
       onChanged();
     } finally {
       setBusy(false);
@@ -106,6 +120,19 @@ export function DeviceCard({ device, onChanged }: { device: Device; onChanged: (
             Set
           </button>
         </div>
+      </label>
+
+      <label className="field">
+        Zoom <span className="muted small">(fixes tiny text/UI on 4K TVs)</span>
+        <select value={zoom} onChange={(e) => saveZoom(e.target.value)} disabled={busy}>
+          <option value="1">100%</option>
+          <option value="1.25">125%</option>
+          <option value="1.5">150%</option>
+          <option value="1.75">175%</option>
+          <option value="2">200%</option>
+          <option value="2.5">250%</option>
+          <option value="3">300%</option>
+        </select>
       </label>
 
       <div className="field">
