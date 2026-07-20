@@ -16,6 +16,8 @@ export const config = {
       '--disable-infobars --disable-session-crashed-bubble --password-store=basic {url}',
   agentVersion: AGENT_VERSION,
   heartbeatMs: 15000,
+  // How often to check for updates when a device has auto-update enabled.
+  autoUpdateCheckMs: Number(process.env.PISIGNAGE_AUTO_UPDATE_INTERVAL_MS ?? 24 * 60 * 60 * 1000),
 };
 
 /** Derive the WebSocket URL from the HTTP base. */

@@ -8,7 +8,13 @@ import { addSubscriber, publish } from '../events.js';
 import { requireAuth } from '../middleware.js';
 import { serializeDevice } from '../serialize.js';
 import { verifyAuthToken } from '../auth.js';
-import { applyContent, applyRefresh, applyTvPower, applyZoom } from '../services/control.js';
+import {
+  applyAutoUpdate,
+  applyContent,
+  applyRefresh,
+  applyTvPower,
+  applyZoom,
+} from '../services/control.js';
 import { isDeviceOnline } from '../ws/registry.js';
 
 const ClaimBody = z.object({
@@ -30,6 +36,10 @@ const SetZoomBody = z.object({
   // Chromium device-scale-factor. 1 = normal; >1 makes pages render bigger,
   // which is the fix for tiny text/UI on 4K panels.
   zoom: z.number().min(0.25).max(4),
+});
+
+const SetAutoUpdateBody = z.object({
+  enabled: z.boolean(),
 });
 
 export async function deviceRoutes(fastify: FastifyInstance): Promise<void> {
@@ -113,6 +123,19 @@ export async function deviceRoutes(fastify: FastifyInstance): Promise<void> {
     const device = await getOwnedDevice(id, req.auth!.orgId);
     if (!device) return reply.code(404).send({ error: 'not_found' });
     const delivered = await applyZoom(id, req.auth!.orgId, parsed.data.zoom);
+    return { ok: true, delivered };
+  });
+
+  // Enable/disable the agent's periodic self-update check. Off by default per device.
+  fastify.post('/api/devices/:id/auto-update', { preHandler: requireAuth }, async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const parsed = SetAutoUpdateBody.safeParse(req.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: 'invalid_body' });
+    }
+    const device = await getOwnedDevice(id, req.auth!.orgId);
+    if (!device) return reply.code(404).send({ error: 'not_found' });
+    const delivered = await applyAutoUpdate(id, req.auth!.orgId, parsed.data.enabled);
     return { ok: true, delivered };
   });
 

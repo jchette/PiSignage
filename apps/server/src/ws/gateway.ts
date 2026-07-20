@@ -47,6 +47,15 @@ export async function registerDeviceGateway(fastify: FastifyInstance): Promise<v
         }),
       );
     }
+    // Sync the auto-update flag too — independent of content, and the agent needs
+    // it fresh after every restart (including one it triggered by self-updating).
+    socket.send(
+      JSON.stringify({
+        t: 'set_auto_update',
+        commandId: 'initial',
+        enabled: device.autoUpdate,
+      }),
+    );
 
     // Liveness: a hard power-loss won't send a TCP FIN, so without this the socket
     // could linger "online" for minutes. We ping every interval; the ws client

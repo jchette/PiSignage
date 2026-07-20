@@ -4,6 +4,7 @@ import { setTvPower } from './cec.js';
 import { config, wsUrl } from './config.js';
 import type { Display } from './display/index.js';
 import { collectMetrics } from './metrics.js';
+import { runSelfUpdate } from './self-update.js';
 
 /**
  * Maintains the persistent outbound WebSocket to the cloud: sends hello +
@@ -17,6 +18,8 @@ export class Agent {
   private currentContent: Content | null = null;
   private tvState: TvState = 'unknown';
   private stopped = false;
+  private autoUpdateTimer: NodeJS.Timeout | null = null;
+  private updating = false;
 
   constructor(
     private readonly token: string,
@@ -30,6 +33,7 @@ export class Agent {
   stop(): void {
     this.stopped = true;
     this.clearHeartbeat();
+    this.setAutoUpdate(false);
     this.ws?.close();
   }
 
@@ -99,6 +103,39 @@ export class Agent {
       case 'ping':
         this.sendHeartbeat();
         break;
+      case 'set_auto_update':
+        this.setAutoUpdate(msg.enabled);
+        if (msg.commandId !== 'initial') this.ack(msg.commandId, true);
+        break;
+    }
+  }
+
+  /** Start/stop the periodic self-update check. Idempotent. */
+  private setAutoUpdate(enabled: boolean): void {
+    if (enabled && !this.autoUpdateTimer) {
+      console.log(`[agent] auto-update enabled (checking every ${config.autoUpdateCheckMs}ms)`);
+      this.autoUpdateTimer = setInterval(() => this.checkForUpdate(), config.autoUpdateCheckMs);
+    } else if (!enabled && this.autoUpdateTimer) {
+      console.log('[agent] auto-update disabled');
+      clearInterval(this.autoUpdateTimer);
+      this.autoUpdateTimer = null;
+    }
+  }
+
+  private async checkForUpdate(): Promise<void> {
+    if (this.updating) return;
+    this.updating = true;
+    try {
+      const shouldRestart = await runSelfUpdate();
+      if (shouldRestart) {
+        // The kiosk browser runs detached (its own process group), so it keeps
+        // showing content through this exit; systemd (Restart=always) brings the
+        // agent back up on the new build and it reconnects.
+        this.stop();
+        process.exit(0);
+      }
+    } finally {
+      this.updating = false;
     }
   }
 

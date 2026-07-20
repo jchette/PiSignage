@@ -110,12 +110,21 @@ export const PingSchema = z.object({
   t: z.literal('ping'),
 });
 
+/** Enable/disable the agent's periodic self-update check. Off by default — opt-in
+ *  per device since an update pulls whatever is on `main` and restarts the agent. */
+export const SetAutoUpdateSchema = z.object({
+  t: z.literal('set_auto_update'),
+  commandId: z.string(),
+  enabled: z.boolean(),
+});
+
 export const ServerMessageSchema = z.discriminatedUnion('t', [
   SetContentSchema,
   TvPowerSchema,
   RebootSchema,
   RefreshSchema,
   PingSchema,
+  SetAutoUpdateSchema,
 ]);
 export type ServerMessage = z.infer<typeof ServerMessageSchema>;
 

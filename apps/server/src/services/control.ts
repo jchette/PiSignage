@@ -49,6 +49,18 @@ export async function applyZoom(deviceId: string, orgId: string, zoom: number): 
   return delivered;
 }
 
+/** Enable/disable the agent's periodic self-update check for a device. */
+export async function applyAutoUpdate(
+  deviceId: string,
+  orgId: string,
+  enabled: boolean,
+): Promise<boolean> {
+  await db.update(schema.devices).set({ autoUpdate: enabled }).where(eq(schema.devices.id, deviceId));
+  const delivered = sendToDevice(deviceId, { t: 'set_auto_update', commandId: nanoid(), enabled });
+  publish(orgId, { type: 'device.updated', deviceId });
+  return delivered;
+}
+
 export function applyTvPower(deviceId: string, on: boolean): boolean {
   return sendToDevice(deviceId, { t: 'tv_power', commandId: nanoid(), on });
 }

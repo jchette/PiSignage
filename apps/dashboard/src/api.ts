@@ -21,6 +21,7 @@ export interface Device {
   tvState: 'on' | 'off' | 'unknown';
   content: { type: 'url'; url: string } | { type: 'blank' } | null;
   zoom: number;
+  autoUpdate: boolean;
   metrics: DeviceMetrics;
   createdAt: string;
 }
@@ -138,6 +139,11 @@ export const api = {
     request<{ ok: boolean; delivered: boolean }>(`/api/devices/${id}/zoom`, {
       method: 'POST',
       body: JSON.stringify({ zoom }),
+    }),
+  setAutoUpdate: (id: string, enabled: boolean) =>
+    request<{ ok: boolean; delivered: boolean }>(`/api/devices/${id}/auto-update`, {
+      method: 'POST',
+      body: JSON.stringify({ enabled }),
     }),
   setTvPower: (id: string, on: boolean) =>
     request<{ ok: boolean; delivered: boolean }>(`/api/devices/${id}/tv`, {

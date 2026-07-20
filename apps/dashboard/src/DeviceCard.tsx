@@ -137,6 +137,30 @@ export function DeviceCard({ device, onChanged }: { device: Device; onChanged: (
 
       <div className="field">
         <span>
+          Auto-update{' '}
+          <span className={`tag ${device.autoUpdate ? 'on' : 'off'}`}>
+            {device.autoUpdate ? 'on' : 'off'}
+          </span>
+        </span>
+        <div className="card-actions">
+          <button
+            onClick={() => act(() => api.setAutoUpdate(device.id, true))}
+            disabled={busy || device.autoUpdate}
+          >
+            Enable
+          </button>
+          <button
+            className="ghost"
+            onClick={() => act(() => api.setAutoUpdate(device.id, false))}
+            disabled={busy || !device.autoUpdate}
+          >
+            Disable
+          </button>
+        </div>
+      </div>
+
+      <div className="field">
+        <span>
           TV power <span className={`tag ${device.tvState}`}>{device.tvState}</span>
         </span>
         <div className="card-actions">

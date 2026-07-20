@@ -62,6 +62,8 @@ export const devices = sqliteTable(
     // Chromium device-scale-factor for this TV (1 = normal). Fixes pages
     // rendering tiny on 4K panels laid out for ~1080p.
     zoom: real('zoom').notNull().default(1),
+    // Opt-in: agent periodically self-updates (git pull + rebuild + restart) when true.
+    autoUpdate: integer('auto_update', { mode: 'boolean' }).notNull().default(false),
     // Health metrics from the latest heartbeat (null until first report).
     cpuTempC: real('cpu_temp_c'),
     uptimeSec: integer('uptime_sec'),
