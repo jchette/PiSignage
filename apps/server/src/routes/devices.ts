@@ -13,6 +13,7 @@ import {
   applyContent,
   applyRefresh,
   applyTvPower,
+  applyTvVolume,
   applyZoom,
 } from '../services/control.js';
 import { isDeviceOnline } from '../ws/registry.js';
@@ -30,6 +31,10 @@ const SetContentBody = z.object({
 
 const TvPowerBody = z.object({
   on: z.boolean(),
+});
+
+const TvVolumeBody = z.object({
+  action: z.enum(['up', 'down', 'mute']),
 });
 
 const SetZoomBody = z.object({
@@ -150,6 +155,19 @@ export async function deviceRoutes(fastify: FastifyInstance): Promise<void> {
     const device = await getOwnedDevice(id, req.auth!.orgId);
     if (!device) return reply.code(404).send({ error: 'not_found' });
     const delivered = applyTvPower(id, parsed.data.on);
+    return { ok: true, delivered };
+  });
+
+  // HDMI-CEC TV volume control (relative up/down/mute — no absolute level to report).
+  fastify.post('/api/devices/:id/volume', { preHandler: requireAuth }, async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const parsed = TvVolumeBody.safeParse(req.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: 'invalid_body' });
+    }
+    const device = await getOwnedDevice(id, req.auth!.orgId);
+    if (!device) return reply.code(404).send({ error: 'not_found' });
+    const delivered = applyTvVolume(id, parsed.data.action);
     return { ok: true, delivered };
   });
 

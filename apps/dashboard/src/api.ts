@@ -150,6 +150,11 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ on }),
     }),
+  setVolume: (id: string, action: 'up' | 'down' | 'mute') =>
+    request<{ ok: boolean; delivered: boolean }>(`/api/devices/${id}/volume`, {
+      method: 'POST',
+      body: JSON.stringify({ action }),
+    }),
   refresh: (id: string) =>
     request<{ ok: boolean; delivered: boolean }>(`/api/devices/${id}/refresh`, { method: 'POST' }),
   deleteDevice: (id: string) =>

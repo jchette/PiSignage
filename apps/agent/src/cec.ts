@@ -65,6 +65,35 @@ async function detectAdapter(): Promise<CecAdapter | null> {
   return null;
 }
 
+// CEC User Control Codes (remote-button presses) for volume, sent to the TV's
+// logical address (0). TV-integrated speakers only expose relative up/down/mute
+// via these — there is no standard message reporting back a numeric level (that
+// exists only for a soundbar/AVR via System Audio Control, which doesn't apply here).
+const VOLUME_UI_CMD: Record<'up' | 'down' | 'mute', string> = {
+  up: '0x41',
+  down: '0x42',
+  mute: '0x43',
+};
+
+/** Send one directed volume/mute button tap to the TV. */
+export async function adjustTvVolume(action: 'up' | 'down' | 'mute'): Promise<void> {
+  if (os.platform() !== 'linux') {
+    console.log(`[cec] (dev) would press volume ${action}`);
+    return;
+  }
+
+  const a = await detectAdapter();
+  if (!a) return;
+
+  const uiCmd = VOLUME_UI_CMD[action];
+  try {
+    await run('cec-ctl', ['-d', a.device, '--to', '0', '--user-control-pressed', `ui-cmd=${uiCmd}`]);
+    await run('cec-ctl', ['-d', a.device, '--to', '0', '--user-control-released']);
+  } catch (err) {
+    console.error(`[cec] volume ${action} failed: ${(err as Error).message}`);
+  }
+}
+
 export async function setTvPower(on: boolean): Promise<TvState> {
   if (os.platform() !== 'linux') {
     console.log(`[cec] (dev) would turn TV ${on ? 'ON' : 'OFF'}`);

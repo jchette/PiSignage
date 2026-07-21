@@ -94,6 +94,14 @@ export const TvPowerSchema = z.object({
   on: z.boolean(),
 });
 
+/** HDMI-CEC TV volume control. CEC only exposes relative remote-button
+ *  presses for TV-integrated speakers (no absolute level readback). */
+export const TvVolumeSchema = z.object({
+  t: z.literal('tv_volume'),
+  commandId: z.string(),
+  action: z.enum(['up', 'down', 'mute']),
+});
+
 export const RebootSchema = z.object({
   t: z.literal('reboot'),
   commandId: z.string(),
@@ -121,6 +129,7 @@ export const SetAutoUpdateSchema = z.object({
 export const ServerMessageSchema = z.discriminatedUnion('t', [
   SetContentSchema,
   TvPowerSchema,
+  TvVolumeSchema,
   RebootSchema,
   RefreshSchema,
   PingSchema,

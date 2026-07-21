@@ -65,6 +65,12 @@ export function applyTvPower(deviceId: string, on: boolean): boolean {
   return sendToDevice(deviceId, { t: 'tv_power', commandId: nanoid(), on });
 }
 
+/** Send one CEC volume/mute button press to a device's TV. Nothing to persist —
+ *  CEC exposes no absolute level for TV-integrated speakers. */
+export function applyTvVolume(deviceId: string, action: 'up' | 'down' | 'mute'): boolean {
+  return sendToDevice(deviceId, { t: 'tv_volume', commandId: nanoid(), action });
+}
+
 export function applyRefresh(deviceId: string): boolean {
   return sendToDevice(deviceId, { t: 'refresh', commandId: nanoid() });
 }

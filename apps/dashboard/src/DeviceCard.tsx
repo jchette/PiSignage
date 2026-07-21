@@ -187,6 +187,21 @@ export function DeviceCard({ device, onChanged }: { device: Device; onChanged: (
         </div>
       </div>
 
+      <div className="field">
+        <span>Volume</span>
+        <div className="card-actions">
+          <button className="ghost" onClick={() => act(() => api.setVolume(device.id, 'down'))} disabled={busy}>
+            Vol −
+          </button>
+          <button className="ghost" onClick={() => act(() => api.setVolume(device.id, 'up'))} disabled={busy}>
+            Vol +
+          </button>
+          <button className="ghost" onClick={() => act(() => api.setVolume(device.id, 'mute'))} disabled={busy}>
+            Mute
+          </button>
+        </div>
+      </div>
+
       <div className="card-actions">
         <button
           className="ghost danger"

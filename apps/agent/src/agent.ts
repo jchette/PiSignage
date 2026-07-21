@@ -1,6 +1,6 @@
 import WebSocket from 'ws';
 import { parseServerMessage, type Content, type DeviceMessage, type TvState } from '@pisignage/shared';
-import { setTvPower } from './cec.js';
+import { adjustTvVolume, setTvPower } from './cec.js';
 import { config, wsUrl } from './config.js';
 import type { Display } from './display/index.js';
 import { collectMetrics } from './metrics.js';
@@ -95,6 +95,10 @@ export class Agent {
         this.tvState = await setTvPower(msg.on);
         this.ack(msg.commandId, true);
         this.sendHeartbeat();
+        break;
+      case 'tv_volume':
+        await adjustTvVolume(msg.action);
+        this.ack(msg.commandId, true);
         break;
       case 'reboot':
         this.ack(msg.commandId, true);
