@@ -60,3 +60,7 @@ the dashboard and you're done.
   first-boot service relies on. If you changed that, use Method 1 instead.
 - CEC device, kiosk command, screen-blanking, and cursor are all handled
   automatically — no per-device configuration.
+- Every Pi auto-reboots at a fixed **3 AM** if a security patch needs it
+  (`unattended-upgrades`, same time across the fleet — see
+  [README → Security updates](README.md#security-updates)). Don't schedule
+  content that needs the screen live at that hour.

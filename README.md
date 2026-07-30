@@ -101,6 +101,8 @@ The installer keeps a clean, user-local footprint (no `/opt`, no system service)
   (Desktop Autologin + linger)
 - installs `git`, Chromium, and `v4l-utils` (CEC via `cec-ctl`) only if missing
 - disables screen blanking, hides the cursor for kiosk use, and persists logs
+- configures `unattended-upgrades` for daily OS security patches with a fixed
+  3 AM automatic reboot (see [Security updates](#security-updates))
 
 Logs: `systemctl --user status pisignage-agent` /
 `journalctl --user -u pisignage-agent -f`.
@@ -114,6 +116,28 @@ first-boot hook runs the installer for you. Imager username **must** be `pi`. Se
 > The kiosk launch command (`PISIGNAGE_KIOSK_CMD`), the CEC device, and the
 > server URL (`PISIGNAGE_SERVER`) are all auto-detected/defaulted and overridable
 > via env vars.
+
+## Security updates
+
+Every Pi runs Debian's `unattended-upgrades` (configured by `install.sh`,
+config shipped at [`apps/agent/deploy/52pisignage-unattended-upgrades`](apps/agent/deploy/52pisignage-unattended-upgrades)):
+security-only patches, checked daily, with an automatic reboot at a fixed
+**3 AM** across the whole fleet if one is needed. The reboot time is
+deliberately synchronized rather than staggered — all screens coming back
+together stays in sync; staggering would let one screen's content rotation
+drift from the others. This patches the OS, kernel, and — most importantly for
+a kiosk that renders a remote page 24/7 — Chromium, none of which were touched
+after initial install before this existed.
+
+Two caveats worth knowing:
+- This relies on the security-origins list the `unattended-upgrades` package
+  ships by default for the distro; it's not overridden here.
+- Debian's Chromium package doesn't have as fast a dedicated security channel
+  as some other distros' browser packages, so patches can lag upstream Chrome
+  by a bit. This gets the standard mechanism, not a same-day guarantee.
+
+Each device's last successful update check and whether a reboot is pending are
+reported in its heartbeat and shown on the dashboard device card.
 
 ## Roadmap
 
@@ -129,12 +153,16 @@ first-boot hook runs the installer for you. Imager username **must** be `pi`. Se
   content on 4K panels.
 - **Agent auto-update ✅** Opt-in per device from the dashboard; the agent
   periodically pulls, rebuilds, and restarts itself (off by default).
+- **OS security updates ✅** `unattended-upgrades` on every Pi — daily
+  security-only checks, synchronized 3 AM reboot; status surfaced on the
+  dashboard. See [Security updates](#security-updates).
 - **Next** Email offline alerting and optional digital media content
   (images/video/playlists).
 
 ## The wire protocol
 
 Defined in `packages/shared/src/protocol.ts`. Device→server events: `hello`,
-`heartbeat`, `ack`. Server→device commands: `set_content` (carries `zoom`),
-`tv_power`, `reboot`, `refresh`, `ping`, `set_auto_update`. Pairing is plain
-HTTPS (the device has no token yet).
+`heartbeat` (carries CPU temp/uptime/memory/disk/throttle metrics plus
+`osUpdateCheckedAt`/`rebootPending`), `ack`. Server→device commands:
+`set_content` (carries `zoom`), `tv_power`, `reboot`, `refresh`, `ping`,
+`set_auto_update`. Pairing is plain HTTPS (the device has no token yet).
