@@ -52,7 +52,6 @@ export function DeviceCard({ device, onChanged }: { device: Device; onChanged: (
   }
 
   const m = device.metrics;
-  const lastSeen = device.lastSeenAt ? new Date(device.lastSeenAt).toLocaleString() : 'never';
   const dirty = url !== currentUrl;
   const power = powerHealth(m.throttledFlags);
   const reboot = rebootHealth(m.rebootPending);
@@ -110,6 +109,7 @@ export function DeviceCard({ device, onChanged }: { device: Device; onChanged: (
             level={pctLevel(m.diskUsedPct)}
             gauge={m.diskUsedPct}
           />
+          <Metric label="Last seen" value={relTime(device.lastSeenAt)} />
           <Metric
             label="Last update"
             value={relTime(m.osUpdateCheckedAt)}
@@ -229,7 +229,6 @@ export function DeviceCard({ device, onChanged }: { device: Device; onChanged: (
 
       <div className="card-foot">
         <span>{device.model ?? 'unknown'}{device.agentVersion ? ` · v${device.agentVersion}` : ''}</span>
-        <span>seen {lastSeen}</span>
       </div>
     </div>
   );
