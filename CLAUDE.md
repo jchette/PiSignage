@@ -47,6 +47,14 @@ npm run db:seed -w @pisignage/server   # creates org + admin user
   Drive), git operations can transiently fail with `unable to append to
   '.git/logs/...'` because the sync client briefly locks the file. Just retry
   the command — don't change git config to work around it.
+- Railway (hosting) has **Watch Paths** configured on the service, so a push
+  only auto-deploys if it touches `apps/server/**`, `apps/dashboard/**`, or
+  `packages/shared/**`. A push that only touches `apps/agent/**` or root docs
+  (README, CLAUDE.md) gets silently skipped — Railway shows "no changes to
+  watched files" on the deployment if you check. That's expected, not a
+  problem to fix, since none of those paths affect what `railway.toml`
+  builds/runs. If a deploy is unexpectedly skipped despite touching a watched
+  path, or you need to force one, use the dashboard's manual deploy trigger.
 
 ## Architecture
 
