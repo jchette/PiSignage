@@ -20,12 +20,23 @@ export class ChromiumDisplay implements Display {
   private child: ChildProcess | null = null;
   private currentContent: Content | null = null;
   private currentZoom = 1;
+  /** URL/zoom actually running under `child` — null whenever nothing is live. */
+  private runningUrl: string | null = null;
+  private runningZoom = 1;
 
   async show(content: Content, zoom = 1): Promise<void> {
     this.currentContent = content;
     this.currentZoom = zoom;
     if (content.type === 'blank') {
       this.kill();
+      return;
+    }
+    // A WS reconnect (network blip, missed heartbeat, agent restart) re-delivers
+    // the same set_content on every connect, and a redundant schedule fire can
+    // do the same. Without this check we'd kill+relaunch a perfectly healthy
+    // Chromium for no reason, flashing the kiosk and resetting any client-side
+    // state (e.g. a rotation) the loaded page was keeping.
+    if (this.child && this.runningUrl === content.url && this.runningZoom === zoom) {
       return;
     }
     this.launchUrl(content.url, zoom);
@@ -44,6 +55,8 @@ export class ChromiumDisplay implements Display {
 
   private launchUrl(url: string, zoom: number): void {
     this.kill();
+    this.runningUrl = url;
+    this.runningZoom = zoom;
     // A device-scale-factor other than 1 goes in as a Chromium flag ahead of the
     // URL — valid anywhere before the trailing positional URL argument, so it
     // works regardless of how a custom PISIGNAGE_KIOSK_CMD orders its flags.
