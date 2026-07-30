@@ -24,6 +24,8 @@ export function serializeDevice(row: DeviceRow) {
       memUsedPct: row.memUsedPct ?? null,
       diskUsedPct: row.diskUsedPct ?? null,
       throttledFlags: row.throttledFlags ?? null,
+      osUpdateCheckedAt: row.osUpdateCheckedAt?.toISOString() ?? null,
+      rebootPending: row.rebootPending ?? null,
       at: row.metricsAt?.toISOString() ?? null,
     },
     createdAt: row.createdAt.toISOString(),

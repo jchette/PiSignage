@@ -112,6 +112,9 @@ export async function registerDeviceGateway(fastify: FastifyInstance): Promise<v
               memUsedPct: msg.memUsedPct ?? null,
               diskUsedPct: msg.diskUsedPct ?? null,
               throttledFlags: msg.throttledFlags ?? null,
+              osUpdateCheckedAt:
+                msg.osUpdateCheckedAt != null ? new Date(msg.osUpdateCheckedAt) : null,
+              rebootPending: msg.rebootPending ?? null,
               metricsAt: new Date(),
             })
             .where(eq(schema.devices.id, deviceId));

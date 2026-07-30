@@ -1,5 +1,5 @@
 import { exec } from 'node:child_process';
-import { readFile, statfs } from 'node:fs/promises';
+import { access, readFile, stat, statfs } from 'node:fs/promises';
 import os from 'node:os';
 import { promisify } from 'node:util';
 
@@ -12,6 +12,8 @@ export interface Metrics {
   memUsedPct?: number;
   diskUsedPct?: number;
   throttledFlags?: number;
+  osUpdateCheckedAt?: number;
+  rebootPending?: boolean;
 }
 
 const isLinux = process.platform === 'linux';
@@ -22,18 +24,23 @@ const isLinux = process.platform === 'linux';
  * only the fields that resolved.
  */
 export async function collectMetrics(): Promise<Metrics> {
-  const [cpuTempC, memUsedPct, diskUsedPct, throttledFlags] = await Promise.all([
-    cpuTemp(),
-    memUsed(),
-    diskUsed(),
-    throttled(),
-  ]);
+  const [cpuTempC, memUsedPct, diskUsedPct, throttledFlags, osUpdateCheckedAt, rebootPending] =
+    await Promise.all([
+      cpuTemp(),
+      memUsed(),
+      diskUsed(),
+      throttled(),
+      osUpdateCheckedAtProbe(),
+      rebootPendingProbe(),
+    ]);
   return {
     uptimeSec: Math.round(os.uptime()),
     ...(cpuTempC !== undefined && { cpuTempC }),
     ...(memUsedPct !== undefined && { memUsedPct }),
     ...(diskUsedPct !== undefined && { diskUsedPct }),
     ...(throttledFlags !== undefined && { throttledFlags }),
+    ...(osUpdateCheckedAt !== undefined && { osUpdateCheckedAt }),
+    ...(rebootPending !== undefined && { rebootPending }),
   };
 }
 
@@ -90,5 +97,29 @@ async function throttled(): Promise<number | undefined> {
     return m ? parseInt(m[1], 16) : undefined;
   } catch {
     return undefined; // vcgencmd absent (non-Pi) or no permission
+  }
+}
+
+/** Last successful `apt-get update` package-list refresh — proof the daily
+ *  unattended-upgrades timer is alive. NOT "last package actually installed". */
+async function osUpdateCheckedAtProbe(): Promise<number | undefined> {
+  if (!isLinux) return undefined;
+  try {
+    const info = await stat('/var/lib/apt/periodic/update-success-stamp');
+    return info.mtimeMs;
+  } catch {
+    return undefined; // no permission, or apt periodic never ran on this box
+  }
+}
+
+/** True when dpkg left `/run/reboot-required` — a patch is waiting on a restart
+ *  to take effect (world-readable, no sudo needed to check). */
+async function rebootPendingProbe(): Promise<boolean | undefined> {
+  if (!isLinux) return undefined;
+  try {
+    await access('/run/reboot-required');
+    return true;
+  } catch {
+    return false;
   }
 }

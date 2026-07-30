@@ -166,10 +166,29 @@ if ! loginctl show-user "$USER" 2>/dev/null | grep -q 'Linger=yes'; then
 fi
 # Persist the journal so `journalctl --user -u pisignage-agent` survives reboots
 # (the default volatile journal is wiped on boot, which makes remote debugging hard).
-if [ ! -d /var/log/journal ]; then
-  say "Enabling persistent journal logs (sudo)"
-  sudo mkdir -p /var/log/journal && sudo systemctl restart systemd-journald || true
+# Always re-run this (not gated on the dir already existing): stock RPi OS images
+# ship /var/log/journal empty and root-owned, which silently keeps journald on
+# volatile-only storage — systemd-tmpfiles --create is what actually fixes the
+# ownership/perms, and it's a no-op if already correct.
+say "Ensuring persistent journal logs (sudo)"
+sudo mkdir -p /var/log/journal
+sudo systemd-tmpfiles --create --prefix /var/log/journal
+sudo systemctl restart systemd-journald
+
+# Scheduled OS security updates (sudo): unattended-upgrades checks + applies
+# security patches daily and reboots at a fixed time to actually pick them up
+# (most importantly for Chromium, the biggest attack surface on a 24/7 kiosk).
+# Origins-Pattern is left at the package's own distro default rather than
+# overridden here.
+if ! dpkg -s unattended-upgrades >/dev/null 2>&1; then
+  say "Installing unattended-upgrades (sudo)"
+  sudo apt-get update
+  sudo apt-get install -y unattended-upgrades
 fi
+say "Configuring scheduled security updates (sudo)"
+sudo cp "$REPO_DIR/apps/agent/deploy/52pisignage-unattended-upgrades" \
+  /etc/apt/apt.conf.d/52pisignage-unattended-upgrades
+sudo systemctl enable --now apt-daily.timer apt-daily-upgrade.timer
 
 # ---------------------------------------------------------------------------
 # 7. Install + start the systemd USER service.

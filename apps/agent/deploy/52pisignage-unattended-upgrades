@@ -1,0 +1,11 @@
+// Installed to /etc/apt/apt.conf.d/52pisignage-unattended-upgrades by install.sh.
+// Enables the daily unattended-upgrades cycle and a synchronized automatic
+// reboot so a patched Chromium/kernel/etc. actually takes effect. Deliberately
+// does NOT set Unattended-Upgrade::Origins-Pattern — that's left at the
+// distro-provided default in /etc/apt/apt.conf.d/50unattended-upgrades, which
+// already scopes to security origins for this OS.
+APT::Periodic::Update-Package-Lists "1";
+APT::Periodic::Unattended-Upgrade "1";
+APT::Periodic::AutocleanInterval "7";
+Unattended-Upgrade::Automatic-Reboot "true";
+Unattended-Upgrade::Automatic-Reboot-Time "03:00";

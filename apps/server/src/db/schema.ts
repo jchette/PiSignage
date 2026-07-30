@@ -70,6 +70,10 @@ export const devices = sqliteTable(
     memUsedPct: integer('mem_used_pct'),
     diskUsedPct: integer('disk_used_pct'),
     throttledFlags: integer('throttled_flags'),
+    // Last successful `apt-get update` package-list refresh, and whether a
+    // patch is waiting on a reboot to take effect. See packages/shared/protocol.
+    osUpdateCheckedAt: integer('os_update_checked_at', { mode: 'timestamp' }),
+    rebootPending: integer('reboot_pending', { mode: 'boolean' }),
     metricsAt: integer('metrics_at', { mode: 'timestamp' }),
     createdAt: integer('created_at', { mode: 'timestamp' })
       .notNull()

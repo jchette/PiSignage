@@ -5,7 +5,10 @@ import {
   hasMetrics,
   pctLevel,
   powerHealth,
+  rebootHealth,
+  relTime,
   tempLevel,
+  updateCheckLevel,
   type Level,
 } from './metrics.ts';
 
@@ -52,6 +55,7 @@ export function DeviceCard({ device, onChanged }: { device: Device; onChanged: (
   const lastSeen = device.lastSeenAt ? new Date(device.lastSeenAt).toLocaleString() : 'never';
   const dirty = url !== currentUrl;
   const power = powerHealth(m.throttledFlags);
+  const reboot = rebootHealth(m.rebootPending);
 
   // Worst severity across health signals drives the card's left signal rail.
   const worst = worstLevel([
@@ -59,6 +63,7 @@ export function DeviceCard({ device, onChanged }: { device: Device; onChanged: (
     pctLevel(m.memUsedPct),
     pctLevel(m.diskUsedPct),
     power?.level ?? 'ok',
+    reboot?.level ?? 'ok',
   ]);
   const rail =
     device.status === 'offline'
@@ -85,6 +90,9 @@ export function DeviceCard({ device, onChanged }: { device: Device; onChanged: (
       {power && (
         <div className={`power-alert ${power.level}`}>{power.label}</div>
       )}
+      {reboot && (
+        <div className={`power-alert ${reboot.level}`}>{reboot.label}</div>
+      )}
 
       {hasMetrics(m) ? (
         <div className="metrics">
@@ -101,6 +109,11 @@ export function DeviceCard({ device, onChanged }: { device: Device; onChanged: (
             value={fmt(m.diskUsedPct, '%')}
             level={pctLevel(m.diskUsedPct)}
             gauge={m.diskUsedPct}
+          />
+          <Metric
+            label="Last update"
+            value={relTime(m.osUpdateCheckedAt)}
+            level={updateCheckLevel(m.osUpdateCheckedAt)}
           />
         </div>
       ) : (

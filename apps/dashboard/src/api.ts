@@ -7,6 +7,8 @@ export interface DeviceMetrics {
   memUsedPct: number | null;
   diskUsedPct: number | null;
   throttledFlags: number | null;
+  osUpdateCheckedAt: string | null;
+  rebootPending: boolean | null;
   at: string | null;
 }
 

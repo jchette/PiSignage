@@ -59,6 +59,34 @@ export function powerHealth(flags: number | null): PowerHealth | null {
   return null;
 }
 
+/** A pending reboot means a patch is waiting to take effect. */
+export function rebootHealth(pending: boolean | null): PowerHealth | null {
+  return pending ? { level: 'warn', label: 'Reboot pending' } : null;
+}
+
+/** Severity for how long it's been since the daily OS-update check last ran
+ *  (cadence is daily, so give it slack before flagging anything). */
+export function updateCheckLevel(iso: string | null): Level {
+  if (iso == null) return 'ok'; // no data yet; don't alarm on day one
+  const ageHours = (Date.now() - new Date(iso).getTime()) / 3_600_000;
+  if (ageHours >= 96) return 'crit'; // >4 days since a successful check
+  if (ageHours >= 48) return 'warn'; // >2 days, cadence is daily
+  return 'ok';
+}
+
+/** Compact relative time, e.g. "3d ago", "5h ago", "12m ago", or "—" when absent. */
+export function relTime(iso: string | null): string {
+  if (iso == null) return '—';
+  const sec = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 1000));
+  const d = Math.floor(sec / 86400);
+  if (d > 0) return `${d}d ago`;
+  const h = Math.floor(sec / 3600);
+  if (h > 0) return `${h}h ago`;
+  const m = Math.floor(sec / 60);
+  if (m > 0) return `${m}m ago`;
+  return 'just now';
+}
+
 /** True once any metric has been reported for the device. */
 export function hasMetrics(m: DeviceMetrics): boolean {
   return (

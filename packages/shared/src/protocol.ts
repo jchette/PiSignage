@@ -56,6 +56,11 @@ export const HeartbeatSchema = z.object({
   // bit0 under-voltage now, bit2 throttled now, bit16 under-voltage since boot,
   // bit18 throttled since boot. Absent on non-Pi hardware.
   throttledFlags: z.number().int().optional(),
+  // Epoch ms of the last successful `apt-get update` package-list refresh
+  // (proof the daily OS-update timer is alive, not "last package installed").
+  osUpdateCheckedAt: z.number().optional(),
+  // True when a patch is waiting on a reboot to take effect (/run/reboot-required).
+  rebootPending: z.boolean().optional(),
   agentVersion: z.string().optional(),
 });
 
