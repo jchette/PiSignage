@@ -154,7 +154,7 @@ export async function deviceRoutes(fastify: FastifyInstance): Promise<void> {
     }
     const device = await getOwnedDevice(id, req.auth!.orgId);
     if (!device) return reply.code(404).send({ error: 'not_found' });
-    const delivered = applyTvPower(id, parsed.data.on);
+    const delivered = await applyTvPower(id, req.auth!.orgId, parsed.data.on);
     return { ok: true, delivered };
   });
 

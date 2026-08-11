@@ -57,6 +57,12 @@ export const devices = sqliteTable(
     model: text('model'),
     agentVersion: text('agent_version'),
     tvState: text('tv_state').$type<TvState>().default('unknown'),
+    // Last commanded TV power state (via API or schedule) — null means never
+    // controlled. Distinct from `tvState`, which is what the agent last reported
+    // actually happening. Replayed to the agent on every reconnect so a power
+    // loss (Pi + TV both lose mains) restores the intended state rather than
+    // whatever the TV defaults to when mains power returns.
+    desiredTvPower: integer('desired_tv_power', { mode: 'boolean' }),
     // Desired content for this device (Phase 1: a URL). Null = blank.
     content: text('content', { mode: 'json' }).$type<Content | null>(),
     // Chromium device-scale-factor for this TV (1 = normal). Fixes pages

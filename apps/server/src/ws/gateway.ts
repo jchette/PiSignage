@@ -56,6 +56,19 @@ export async function registerDeviceGateway(fastify: FastifyInstance): Promise<v
         enabled: device.autoUpdate,
       }),
     );
+    // Re-assert the last commanded TV power state. Without this, a Pi + TV that
+    // both lose mains power comes back with whatever the TV itself defaults to
+    // on reconnect, ignoring the last on/off command or schedule that was in
+    // effect. Null means the TV has never been controlled — leave it alone.
+    if (device.desiredTvPower !== null) {
+      socket.send(
+        JSON.stringify({
+          t: 'tv_power',
+          commandId: 'initial',
+          on: device.desiredTvPower,
+        }),
+      );
+    }
 
     // Liveness: a hard power-loss won't send a TCP FIN, so without this the socket
     // could linger "online" for minutes. We ping every interval; the ws client

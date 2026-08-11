@@ -87,7 +87,7 @@ async function fireSchedule(
     if (s.action === 'set_content') {
       await applyContent(deviceId, orgId, s.payload as Content);
     } else {
-      applyTvPower(deviceId, (s.payload as { on: boolean }).on);
+      await applyTvPower(deviceId, orgId, (s.payload as { on: boolean }).on);
     }
   }
   console.log(`[scheduler] fired "${s.name}" (${s.action}) -> ${ids.length} device(s)`);

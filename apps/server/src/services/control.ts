@@ -61,8 +61,13 @@ export async function applyAutoUpdate(
   return delivered;
 }
 
-export function applyTvPower(deviceId: string, on: boolean): boolean {
-  return sendToDevice(deviceId, { t: 'tv_power', commandId: nanoid(), on });
+/** Persist the desired power state (so it survives a reconnect/power loss —
+ *  see gateway.ts's replay-on-connect) and push it live if the device is up. */
+export async function applyTvPower(deviceId: string, orgId: string, on: boolean): Promise<boolean> {
+  await db.update(schema.devices).set({ desiredTvPower: on }).where(eq(schema.devices.id, deviceId));
+  const delivered = sendToDevice(deviceId, { t: 'tv_power', commandId: nanoid(), on });
+  publish(orgId, { type: 'device.updated', deviceId });
+  return delivered;
 }
 
 /** Send one CEC volume/mute button press to a device's TV. Nothing to persist —

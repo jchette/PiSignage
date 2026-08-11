@@ -122,7 +122,7 @@ export async function groupRoutes(fastify: FastifyInstance): Promise<void> {
     if (!(await ownsGroup(id, req.auth!.orgId))) return reply.code(404).send({ error: 'not_found' });
     const ids = await devicesForTarget(req.auth!.orgId, 'group', id);
     let delivered = 0;
-    for (const d of ids) if (applyTvPower(d, parsed.data.on)) delivered++;
+    for (const d of ids) if (await applyTvPower(d, req.auth!.orgId, parsed.data.on)) delivered++;
     return { ok: true, devices: ids.length, delivered };
   });
 
