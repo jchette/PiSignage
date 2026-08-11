@@ -43,6 +43,13 @@ npm run db:seed -w @pisignage/server   # creates org + admin user
   production schema changes, set both env vars inline for that one command
   (values live in Railway's dashboard → server service → Variables) or use
   `railway run npm run db:push -w @pisignage/server`.
+- `npx railway ...` silently resolves to the wrong package — npm's unscoped
+  `railway` is an unrelated third-party "Railway TypeScript SDK", not
+  Railway.app's CLI, and it fails in confusing ways (e.g. `railway login`
+  errors about a missing `.railway/railway.ts` instead of opening a browser).
+  Use `npx @railway/cli ...` (or `npm i -g @railway/cli`) instead. Login is
+  interactive (opens a browser) and `link` needs `--project PiSignage` in a
+  non-interactive shell.
 - If this working copy lives inside a cloud-synced folder (e.g. Synology
   Drive), git operations can transiently fail with `unable to append to
   '.git/logs/...'` because the sync client briefly locks the file. Just retry
@@ -92,7 +99,12 @@ time/weekday, deduped by `lastFiredKey`). All of these write the desired
 state to the `devices` row *and* push a WS command if the device is
 connected — the row is the source of truth; the WS message is best-effort
 delivery, backed by the fact that `gateway.ts` replays the device's current
-`content`/`autoUpdate` on every socket reconnect.
+`content`/`autoUpdate`/`desiredTvPower` on every socket reconnect. The
+`desiredTvPower` replay (added after `tv_power` was found to be the one
+control that *didn't* persist/replay) is what makes a Pi + TV that both lose
+mains power come back in the state they were last commanded to, instead of
+whatever the TV itself defaults to — `tvState` is a separate column, the
+agent's last-*reported* CEC state, not to be confused with the desired one.
 
 **Agent-side display** (`apps/agent/src/display/chromium.ts`) launches
 Chromium in `--kiosk` mode as a detached child process it can kill as a
