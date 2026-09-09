@@ -10,7 +10,10 @@ buildCommand = "npm run build:shared && npm run build -w @pisignage/dashboard &&
 
 [deploy]
 startCommand = "npm run start -w @pisignage/server"
-restartPolicyType = "on_failure"
-restartPolicyMaxRetries = 10
+# "always" (not "on_failure") so the scheduled self-restart in index.ts
+# (worked around a memory leak in @libsql/client, see CLAUDE.md) actually
+# gets restarted — on_failure ignores a clean exit(0).
+restartPolicyType = "always"
+restartPolicyMaxRetries = 100
 healthcheckPath = "/health"
 healthcheckTimeout = 30

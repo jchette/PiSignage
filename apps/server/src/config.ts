@@ -22,4 +22,12 @@ export const config = {
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean),
+  // Daily self-restart to bound the RSS growth from a memory leak in
+  // @libsql/client (confirmed against both local sqlite and the real Turso
+  // endpoint - see CLAUDE.md). Requires railway.toml's restartPolicyType to
+  // be "always", since a clean exit(0) is a no-op under "on_failure". Timed
+  // an hour after the Pi fleet's synchronized 3 AM OS-update reboot so both
+  // disruptions land in the same overnight window.
+  restartAtLocalTime: process.env.RESTART_AT_LOCAL_TIME ?? '04:00',
+  restartTimezone: process.env.RESTART_TIMEZONE ?? 'America/New_York',
 };

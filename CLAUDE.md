@@ -135,6 +135,23 @@ either manually (curl one-liner) or via `firstrun-pisignage.sh`, which just
 installs a one-shot systemd unit that runs the same installer on first boot.
 Full walkthrough in `PROVISIONING.md`.
 
+**The server restarts itself daily at 4 AM America/New_York**
+(`apps/server/src/index.ts`, `startRestartTimer`, using the same `nowInTz`
+minute-tick pattern as `scheduler.ts`) to work around a memory leak in
+`@libsql/client`: RSS grows continuously with query volume (confirmed against
+both local sqlite and the real Turso endpoint — `heapUsed` stays flat, so
+it's native/off-heap, not a bug in our code) and is never released, which was
+driving Railway's memory billing up month over month. Timed an hour after the
+Pi fleet's synchronized 3 AM OS-update reboot so both disruptions land in the
+same overnight window; devices ride it out via the existing WS
+reconnect-with-backoff + replay logic (`agent.ts`/`gateway.ts`), and
+`ChromiumDisplay.show()`'s skip-relaunch-if-unchanged logic (see above) means
+the kiosk doesn't flash. The restart is a clean `app.close()` +
+`process.exit(0)`, which is why `railway.toml`'s `restartPolicyType` is
+`"always"` and not the more typical `"on_failure"` — that policy explicitly
+ignores exit code 0. If `@libsql/client` ships a real fix, both this and the
+restart policy can go.
+
 **Dashboard types are hand-mirrored, not shared.** `apps/dashboard/src/api.ts`
 defines `Device`/`DeviceMetrics` by hand to match
 `apps/server/src/serialize.ts`'s `serializeDevice` output — there's no
